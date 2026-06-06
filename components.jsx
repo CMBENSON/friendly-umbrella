@@ -1,152 +1,176 @@
-/* O11Y Command — shared primitives & charts */
+/* O11Y Command — AI copilot, insights & war-room panel */
 
-const STATUS_LABEL = { critical: 'Critical', degraded: 'Degraded', healthy: 'Healthy' };
-const STATUS_TONE = { critical: 'crit', degraded: 'warn', healthy: 'ok' };
+const INSIGHT_META = {
+  correlation: { icon: 'link', label: 'Correlation' },
+  prediction: { icon: 'trendUp', label: 'Prediction' },
+  recommendation: { icon: 'lightbulb', label: 'Recommendation' },
+  anomaly: { icon: 'activity', label: 'Anomaly' },
+};
 
-function Badge({ tone = 'neutral', children, dot }) {
-  return (
-    <span className={'badge ' + tone}>
-      {dot && <span className={'dot ' + tone} style={{ width: 6, height: 6 }} />}
-      {children}
-    </span>
-  );
+/* ---- tiny markdown renderer for chat bubbles ---- */
+function mdInline(s, key) {
+  const parts = s.split(/(\*\*[^*]+\*\*)/g).filter(Boolean);
+  return parts.map((p, i) => p.startsWith('**') && p.endsWith('**')
+    ? <strong key={i}>{p.slice(2, -2)}</strong> : <React.Fragment key={i}>{p}</React.Fragment>);
 }
-
-function StatusDot({ status, pulse }) {
-  return <span className={'dot ' + status + (pulse ? ' pulse' : '')} style={pulse ? { color: 'var(--' + (STATUS_TONE[status] || status) + ')' } : null} />;
-}
-
-function Avatar({ name, size, people }) {
-  const p = (people || (window.DB && window.DB.people) || {})[name] || {};
-  const cls = 'avatar' + (size === 'sm' ? ' sm' : size === 'lg' ? ' lg' : '');
-  const initials = p.initials || (name || '?').split(' ').map(w => w[0]).join('').slice(0, 2);
-  return <div className={cls} style={{ background: p.color || 'var(--accent)' }} title={name}>{initials}</div>;
-}
-
-function Card({ title, sub, src, srcIcon, action, children, pad = true, style, className }) {
-  return (
-    <div className={'card ' + (className || '')} style={style}>
-      {(title || action || src) && (
-        <div className="card-h">
-          {title && <h3>{title}</h3>}
-          {sub && <span className="sub">{sub}</span>}
-          {src && <span className="src">{srcIcon && <Icon name={srcIcon} size={13} />}{src}</span>}
-          {action && <div style={{ marginLeft: src ? 12 : 'auto' }}>{action}</div>}
-        </div>
-      )}
-      <div className={pad ? 'card-b' : ''} style={pad ? null : { padding: 0 }}>{children}</div>
-    </div>
-  );
-}
-
-/* ---------------- charts ---------------- */
-function colorVar(c) {
-  const map = { accent: 'var(--accent)', crit: 'var(--crit)', critical: 'var(--crit)', warn: 'var(--warn)', warning: 'var(--warn)', ok: 'var(--ok)', info: 'var(--info)' };
-  return map[c] || c || 'var(--accent)';
-}
-
-function buildPath(data, w, h, pad) {
-  const p = pad || 0;
-  const min = Math.min(...data), max = Math.max(...data);
-  const span = max - min || 1;
-  const iw = w - p * 2, ih = h - p * 2;
-  const pts = data.map((v, i) => {
-    const x = p + (i / (data.length - 1)) * iw;
-    const y = p + ih - ((v - min) / span) * ih;
-    return [x, y];
+function Markdown({ text }) {
+  const lines = text.split('\n');
+  const blocks = [];
+  let list = null;
+  lines.forEach((ln, i) => {
+    const t = ln.trim();
+    if (/^[-•]\s+/.test(t)) { (list = list || []).push(t.replace(/^[-•]\s+/, '')); }
+    else { if (list) { blocks.push({ type: 'ul', items: list }); list = null; } if (t) blocks.push({ type: 'p', text: t }); }
   });
-  // smooth-ish line
-  let d = 'M' + pts[0][0].toFixed(1) + ' ' + pts[0][1].toFixed(1);
-  for (let i = 1; i < pts.length; i++) {
-    const [x0, y0] = pts[i - 1], [x1, y1] = pts[i];
-    const cx = (x0 + x1) / 2;
-    d += ' C' + cx.toFixed(1) + ' ' + y0.toFixed(1) + ' ' + cx.toFixed(1) + ' ' + y1.toFixed(1) + ' ' + x1.toFixed(1) + ' ' + y1.toFixed(1);
+  if (list) blocks.push({ type: 'ul', items: list });
+  return <>{blocks.map((b, i) => b.type === 'ul'
+    ? <ul key={i}>{b.items.map((it, j) => <li key={j}>{mdInline(it)}</li>)}</ul>
+    : <p key={i}>{mdInline(b.text)}</p>)}</>;
+}
+
+/* ---- grounded offline fallback ---- */
+function cannedAnswer(q) {
+  const D = window.DB; const s = q.toLowerCase();
+  const inc = D.incidents[0];
+  if (/(status update|draft|comms|customer)/.test(s))
+    return 'Here\u2019s a draft you can post:\n\n"' + D.ai.incidentCopilot[inc.id].draft + '"\n\nWant me to tailor the tone or add an ETA?';
+  if (/(who|page|escalat)/.test(s))
+    return '**' + inc.id + '** is owned by **' + inc.commander + '** (Payments primary). If you need deeper DB help, page **Dana Liu** (Platform primary) \u2014 she\u2019s already scaling Ledger replicas. Next escalation tier is the team lead after 15 min unacked.';
+  if (/(budget|slo|risk|burn)/.test(s)) {
+    const r = D.slos.filter(x => x.budget < 25).map(x => '- **' + x.service + ' ' + x.name + '** \u2014 ' + x.budget + '% budget left').join('\n');
+    return 'Two SLOs are at risk right now:\n\n' + r + '\n\nAt the current burn rate, Checkout availability breaches before ~18:15 today.';
   }
-  return { d, pts, min, max };
+  if (/(chang|before|cause|why|deploy)/.test(s))
+    return 'Most likely trigger: **CHG0048213** (Payments v4.2 deploy), which entered its window at 13:30.\n\n- Checkout 5xx onset at 13:46 (+16m)\n- Ledger DB connection pool saturated by 13:50\n- Error rate now easing after replicas were scaled 3\u21926\n\nConfidence ~92%. Rolling back the change is the fastest path if the scale-out doesn\u2019t hold.';
+  if (/(summar|incident|happen|going on)/.test(s))
+    return D.ai.incidentCopilot[inc.id].summary;
+  return 'Right now the headline is **' + inc.id + ' (' + inc.severity + ')** \u2014 ' + inc.title + '. ' + D.kpis.firingAlerts + ' alerts are firing across ' + D.kpis.servicesDegraded + ' degraded services. Ask me to summarize the incident, explain what changed, draft an update, or check error budgets.';
 }
 
-function Sparkline({ data, color = 'accent', w = 120, h = 34, fill = true, strokeW = 2 }) {
-  const id = React.useMemo(() => 'sp' + Math.random().toString(36).slice(2, 8), []);
-  const { d } = buildPath(data, w, h, 3);
-  const c = colorVar(color);
-  const area = d + ' L' + (w - 3) + ' ' + (h - 3) + ' L3 ' + (h - 3) + ' Z';
-  return (
-    <svg className="spark" viewBox={'0 0 ' + w + ' ' + h} preserveAspectRatio="none" style={{ height: h }}>
-      <defs>
-        <linearGradient id={id} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor={c} stopOpacity="0.22" />
-          <stop offset="100%" stopColor={c} stopOpacity="0" />
-        </linearGradient>
-      </defs>
-      {fill && <path d={area} fill={'url(#' + id + ')'} />}
-      <path d={d} fill="none" stroke={c} strokeWidth={strokeW} strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
-    </svg>
-  );
+async function askCopilot(question) {
+  const D = window.DB;
+  const prompt = D.ai.buildContext() + '\n\nUser question: ' + question +
+    '\n\nAnswer as O11Y Copilot in 2\u20135 sentences or a short bullet list. Be specific and reference the data above. Use **bold** for key entities. Do not invent metrics.';
+  try {
+    if (window.claude && window.claude.complete) {
+      const out = await window.claude.complete(prompt);
+      if (out && out.trim()) return out.trim();
+    }
+  } catch (e) { /* fall through */ }
+  return cannedAnswer(question);
 }
 
-function AreaChart({ data, color = 'accent', h = 150, threshold, thLabel, unit }) {
-  const id = React.useMemo(() => 'ac' + Math.random().toString(36).slice(2, 8), []);
-  const w = 600;
-  const { d, min, max } = buildPath(data, w, h, 8);
-  const c = colorVar(color);
-  const area = d + ' L' + (w - 8) + ' ' + (h - 8) + ' L8 ' + (h - 8) + ' Z';
-  const span = max - min || 1;
-  const thY = threshold != null ? (8 + (h - 16) - ((threshold - min) / span) * (h - 16)) : null;
-  const grid = [0.25, 0.5, 0.75].map(f => 8 + (h - 16) * f);
+/* ---- insight card ---- */
+function InsightCard({ ins, go, copilot }) {
+  const m = INSIGHT_META[ins.type];
+  const tone = ins.sev === 'critical' ? 'crit' : ins.sev === 'warning' ? 'warn' : 'info';
   return (
-    <svg viewBox={'0 0 ' + w + ' ' + h} preserveAspectRatio="none" style={{ width: '100%', height: h, display: 'block' }}>
-      <defs>
-        <linearGradient id={id} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor={c} stopOpacity="0.24" />
-          <stop offset="100%" stopColor={c} stopOpacity="0" />
-        </linearGradient>
-      </defs>
-      {grid.map((y, i) => <line key={i} x1="8" x2={w - 8} y1={y} y2={y} stroke="var(--border)" strokeWidth="1" strokeDasharray="3 4" vectorEffect="non-scaling-stroke" />)}
-      {thY != null && <line x1="8" x2={w - 8} y1={thY} y2={thY} stroke="var(--crit)" strokeWidth="1.5" strokeDasharray="5 4" vectorEffect="non-scaling-stroke" />}
-      <path d={area} fill={'url(#' + id + ')'} />
-      <path d={d} fill="none" stroke={c} strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
-    </svg>
-  );
-}
-
-/* radial gauge for SLO error budget */
-function Gauge({ pct, color = 'ok', size = 64, label }) {
-  const r = (size - 8) / 2;
-  const circ = 2 * Math.PI * r;
-  const c = colorVar(color);
-  const off = circ * (1 - Math.max(0, Math.min(100, pct)) / 100);
-  return (
-    <div style={{ position: 'relative', width: size, height: size, flex: 'none' }}>
-      <svg width={size} height={size} style={{ transform: 'rotate(-90deg)' }}>
-        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="var(--surface-2)" strokeWidth="6" />
-        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={c} strokeWidth="6" strokeLinecap="round"
-          strokeDasharray={circ} strokeDashoffset={off} style={{ transition: 'stroke-dashoffset .6s ease' }} />
-      </svg>
-      <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center' }}>
-        <span className="tnum" style={{ fontSize: size > 56 ? 15 : 12, fontWeight: 700 }}>{label != null ? label : pct + '%'}</span>
+    <div className="insight" style={{ paddingLeft: 16 }}>
+      <div className="row" style={{ gap: 8 }}>
+        <span className="ai-chip"><Icon name={m.icon} size={12} />{m.label}</span>
+        <span className="row" style={{ gap: 6, marginLeft: 'auto' }}>
+          <span style={{ fontSize: 10.5, color: 'var(--ink-faint)', fontWeight: 600 }}>{ins.confidence}%</span>
+          <span className="conf-bar" style={{ width: 44, flex: 'none' }}><span style={{ width: ins.confidence + '%' }} /></span>
+        </span>
+      </div>
+      <div>
+        <div className="row" style={{ gap: 7, alignItems: 'flex-start' }}>
+          <span className={'dot ' + tone} style={{ marginTop: 6 }} />
+          <div style={{ fontSize: 13.5, fontWeight: 700, lineHeight: 1.3 }}>{ins.title}</div>
+        </div>
+        <div style={{ fontSize: 12.5, color: 'var(--ink-2)', marginTop: 6, lineHeight: 1.5 }}>{ins.body}</div>
+      </div>
+      <div className="row" style={{ gap: 6, flexWrap: 'wrap' }}>
+        {ins.evidence.map((e, i) => <span key={i} className="badge neutral" style={{ fontWeight: 500 }}>{e}</span>)}
+      </div>
+      <div className="row" style={{ gap: 8, marginTop: 2 }}>
+        <button className="btn sm primary" onClick={() => go(ins.link.screen, ins.link.params || {})}>
+          <Icon name={ins.action.icon} size={14} />{ins.action.label}
+        </button>
+        <button className="btn sm ghost" onClick={() => copilot('Explain this insight: ' + ins.title)}>
+          <Icon name="sparkles" size={14} />Ask
+        </button>
       </div>
     </div>
   );
 }
 
-/* small horizontal segmented bar */
-function SegBar({ parts }) {
-  const total = parts.reduce((s, p) => s + p.v, 0) || 1;
+/* ---- overview AI insights section ---- */
+function AiInsightsCard({ go, copilot }) {
+  const D = window.DB;
   return (
-    <div style={{ display: 'flex', height: 8, borderRadius: 99, overflow: 'hidden', background: 'var(--surface-2)' }}>
-      {parts.map((p, i) => <div key={i} title={p.label} style={{ width: (p.v / total * 100) + '%', background: colorVar(p.color) }} />)}
+    <Card pad={false}
+      title="AI insights"
+      action={
+        <div className="row" style={{ gap: 10 }}>
+          <span className="ai-chip"><Icon name="sparkles" size={12} />4 findings · updated 1m ago</span>
+          <button className="btn sm ghost" onClick={() => copilot()}>Open copilot<Icon name="chevronRight" size={14} /></button>
+        </div>
+      }>
+      <div className="card-h" style={{ paddingTop: 0, paddingBottom: 0, display: 'none' }} />
+      <div className="card-b" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+        {D.ai.insights.map(ins => <InsightCard key={ins.id} ins={ins} go={go} copilot={copilot} />)}
+      </div>
+    </Card>
+  );
+}
+
+/* ---- war-room AI panel ---- */
+function AiIncidentPanel({ incId, go, copilot }) {
+  const D = window.DB;
+  const c = D.ai.incidentCopilot[incId];
+  if (!c) return null;
+  return (
+    <div className="card" style={{ overflow: 'hidden', border: '1px solid color-mix(in oklab, var(--ai) 30%, var(--border))' }}>
+      <div className="card-h" style={{ paddingBottom: 0 }}>
+        <span className="ai-mark ai-grad"><Icon name="sparkles" size={16} /></span>
+        <h3>Copilot analysis</h3>
+        <span className="ai-chip" style={{ marginLeft: 'auto' }}><Icon name="target" size={12} />{c.confidence}% confidence</span>
+      </div>
+      <div className="card-b" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <div style={{ background: 'var(--ai-soft)', border: '1px solid color-mix(in oklab, var(--ai) 16%, var(--border))', borderRadius: 'var(--r-md)', padding: 12 }}>
+          <div className="stat-l" style={{ marginBottom: 4, color: 'var(--ai-ink)', fontWeight: 700 }}>Likely root cause</div>
+          <div style={{ fontSize: 13.5, fontWeight: 600, lineHeight: 1.4 }}>{c.hypothesis}</div>
+        </div>
+        <div style={{ fontSize: 13, color: 'var(--ink-2)', lineHeight: 1.55 }}>{c.summary}</div>
+
+        <div>
+          <div className="stat-l" style={{ marginBottom: 8 }}>Suggested actions</div>
+          <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
+            {c.actions.map((a, i) => (
+              <button key={i} className={'btn sm' + (a.tone === 'crit' ? ' danger' : a.tone === 'accent' ? ' primary' : '')}>
+                <Icon name={a.icon} size={14} />{a.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div>
+          <div className="stat-l" style={{ marginBottom: 8 }}>Similar past incidents</div>
+          <div className="grid" style={{ gap: 8 }}>
+            {c.similar.map(s => (
+              <button key={s.id} className="lrow click" onClick={() => copilot('How was ' + s.id + ' resolved?')}
+                style={{ border: '1px solid var(--border)', borderRadius: 'var(--r-md)', padding: '9px 12px', background: 'none', textAlign: 'left' }}>
+                <Icon name="flame" size={14} style={{ color: 'var(--ink-faint)' }} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 12.5, fontWeight: 600 }}>{s.id} · {s.title}</div>
+                  <div className="mono" style={{ fontSize: 10.5, color: 'var(--ink-faint)' }}>{s.when}</div>
+                </div>
+                <Badge tone="ok">resolved {s.resolved}</Badge>
+              </button>
+            ))}
+          </div>
+        </div>
+        <button className="ai-btn" style={{ justifyContent: 'center' }} onClick={() => copilot('Walk me through resolving ' + incId)}>
+          <Icon name="sparkles" size={16} />Ask copilot about this incident
+        </button>
+      </div>
     </div>
   );
 }
 
-window.Badge = Badge;
-window.StatusDot = StatusDot;
-window.Avatar = Avatar;
-window.Card = Card;
-window.Sparkline = Sparkline;
-window.AreaChart = AreaChart;
-window.Gauge = Gauge;
-window.SegBar = SegBar;
-window.STATUS_LABEL = STATUS_LABEL;
-window.STATUS_TONE = STATUS_TONE;
-window.colorVar = colorVar;
+window.InsightCard = InsightCard;
+window.AiInsightsCard = AiInsightsCard;
+window.AiIncidentPanel = AiIncidentPanel;
+window.askCopilot = askCopilot;
+window.Markdown = Markdown;

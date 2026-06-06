@@ -1,424 +1,94 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>O11Y Command — Design Brief</title>
-<link rel="preconnect" href="https://fonts.googleapis.com" />
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
-<style>
-:root{
-  --bg:oklch(0.975 0.003 270); --sheet:#fff; --surface-2:oklch(0.985 0.003 270);
-  --border:oklch(0.92 0.004 270); --border-strong:oklch(0.86 0.006 270);
-  --ink:oklch(0.24 0.012 270); --ink-2:oklch(0.44 0.012 270); --ink-3:oklch(0.6 0.01 270); --ink-faint:oklch(0.72 0.008 270);
-  --accent:#6366f1; --accent-soft:color-mix(in oklab,var(--accent) 13%,#fff); --accent-ink:color-mix(in oklab,var(--accent) 68%,var(--ink));
-  --ai:oklch(0.56 0.21 300); --ai-2:oklch(0.62 0.2 268); --ai-soft:color-mix(in oklab,var(--ai) 12%,#fff); --ai-ink:color-mix(in oklab,var(--ai) 70%,var(--ink));
-  --crit:oklch(0.58 0.21 22); --warn:oklch(0.74 0.15 72); --ok:oklch(0.64 0.15 152); --info:oklch(0.62 0.13 240);
-  --font:'Onest',system-ui,sans-serif; --mono:'JetBrains Mono',ui-monospace,monospace;
-}
-*{box-sizing:border-box;}
-html{scroll-behavior:smooth;}
-body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font);-webkit-font-smoothing:antialiased;line-height:1.6;}
-.wrap{display:grid;grid-template-columns:248px 1fr;max-width:1180px;margin:0 auto;gap:0;align-items:start;}
+/* O11Y Command — Copilot slide-over drawer */
 
-/* TOC */
-.toc{position:sticky;top:0;height:100vh;overflow-y:auto;padding:40px 22px;border-right:1px solid var(--border);}
-.toc .logo{display:flex;align-items:center;gap:11px;margin-bottom:26px;}
-.toc .mark{width:34px;height:34px;border-radius:10px;background:linear-gradient(140deg,var(--accent),oklch(0.6 0.2 320));display:grid;place-items:center;color:#fff;flex:none;}
-.toc .mark svg{width:19px;height:19px;}
-.toc .nm{font-weight:700;font-size:14px;letter-spacing:-0.01em;line-height:1.2;white-space:nowrap;}
-.toc .sb{font-size:11px;color:var(--ink-3);font-family:var(--mono);line-height:1.2;}
-.toc a{display:block;font-size:13px;color:var(--ink-3);text-decoration:none;padding:6px 10px;border-radius:8px;font-weight:500;border-left:2px solid transparent;}
-.toc a:hover{color:var(--ink);background:var(--surface-2);}
-.toc a .n{font-family:var(--mono);font-size:11px;color:var(--ink-faint);margin-right:8px;}
+function CopilotDrawer({ open, onClose, request, go }) {
+  const D = window.DB;
+  const greeting = {
+    role: 'ai',
+    text: 'Hi Priya — I\u2019m tracking **INC-4821 (SEV1)** on Checkout. My current read: a **Payments v4.2 deploy (CHG0048213)** is the likely trigger and error rate is already easing after the Ledger DB scale-out.\n\nAsk me anything, or pick a prompt below.',
+  };
+  const [messages, setMessages] = useState([greeting]);
+  const [input, setInput] = useState('');
+  const [busy, setBusy] = useState(false);
+  const bodyRef = useRef(null);
+  const lastReq = useRef(0);
 
-/* content sheet */
-.doc{padding:0 0 80px;}
-.sheet{background:var(--sheet);border-left:1px solid var(--border);border-right:1px solid var(--border);min-height:100vh;}
-.inner{max-width:760px;margin:0 auto;padding:0 56px;}
+  const scrollDown = () => requestAnimationFrame(() => { const b = bodyRef.current; if (b) b.scrollTop = b.scrollHeight; });
 
-.cover{padding:80px 56px 48px;border-bottom:1px solid var(--border);background:
-  radial-gradient(120% 80% at 100% 0%, color-mix(in oklab,var(--ai) 7%,transparent), transparent 60%),
-  radial-gradient(100% 70% at 0% 0%, var(--accent-soft), transparent 55%);}
-.cover .eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--accent-ink);font-weight:600;}
-.cover h1{font-size:46px;line-height:1.04;letter-spacing:-0.03em;font-weight:800;margin:14px 0 12px;}
-.cover .lede{font-size:18px;color:var(--ink-2);max-width:560px;line-height:1.5;}
-.cover .meta{display:flex;gap:28px;margin-top:32px;flex-wrap:wrap;}
-.cover .meta div{font-size:13px;}
-.cover .meta .k{font-family:var(--mono);font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-faint);font-weight:600;}
-.cover .meta .v{font-weight:600;margin-top:2px;}
+  const send = async (text) => {
+    const q = (text || '').trim();
+    if (!q || busy) return;
+    setInput('');
+    setMessages(m => [...m, { role: 'user', text: q }, { role: 'ai', typing: true }]);
+    setBusy(true);
+    scrollDown();
+    const answer = await window.askCopilot(q);
+    setMessages(m => { const c = m.slice(); c[c.length - 1] = { role: 'ai', text: answer }; return c; });
+    setBusy(false);
+    scrollDown();
+  };
 
-section{padding-top:52px;}
-.kick{font-family:var(--mono);font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--ai-ink);font-weight:600;display:flex;align-items:center;gap:10px;}
-.kick:before{content:'';width:22px;height:2px;background:var(--ai);border-radius:9px;}
-h2{font-size:29px;letter-spacing:-0.02em;font-weight:800;margin:14px 0 8px;line-height:1.15;}
-h3{font-size:17px;font-weight:700;letter-spacing:-0.01em;margin:30px 0 8px;}
-h4{font-size:14px;font-weight:700;margin:20px 0 6px;}
-p{margin:0 0 14px;color:var(--ink);}
-p.muted,.muted{color:var(--ink-2);}
-a.inline{color:var(--accent-ink);text-decoration:none;border-bottom:1px solid color-mix(in oklab,var(--accent) 30%,transparent);}
-strong{font-weight:700;}
-.mono{font-family:var(--mono);}
+  // external prefill requests (from insight "Ask" buttons, etc.)
+  useEffect(() => {
+    if (request && request.n && request.n !== lastReq.current) {
+      lastReq.current = request.n;
+      if (request.q) send(request.q);
+    }
+  }, [request]);
 
-ul.clean{list-style:none;padding:0;margin:14px 0;display:flex;flex-direction:column;gap:10px;}
-ul.clean li{display:flex;gap:11px;font-size:15px;line-height:1.5;}
-ul.clean li:before{content:'';width:6px;height:6px;border-radius:99px;background:var(--accent);margin-top:9px;flex:none;}
-ul.clean.ai li:before{background:var(--ai);}
+  useEffect(() => { scrollDown(); }, [open]);
 
-.lead-in{font-size:18px;line-height:1.55;color:var(--ink-2);margin:16px 0 8px;}
+  if (!open) return null;
+  const showPrompts = messages.length <= 1;
 
-/* cards / grids */
-.cards{display:grid;gap:14px;margin:20px 0;}
-.c2{grid-template-columns:1fr 1fr;}
-.c3{grid-template-columns:repeat(3,1fr);}
-.tile{border:1px solid var(--border);border-radius:14px;padding:18px;background:var(--sheet);}
-.tile .ico{width:34px;height:34px;border-radius:9px;display:grid;place-items:center;margin-bottom:12px;}
-.tile h4{margin:0 0 5px;font-size:15px;}
-.tile p{margin:0;font-size:13.5px;color:var(--ink-2);line-height:1.5;}
-.tag{display:inline-flex;align-items:center;gap:6px;font-family:var(--mono);font-size:11px;font-weight:600;padding:3px 9px;border-radius:99px;background:var(--surface-2);border:1px solid var(--border);color:var(--ink-3);}
-.tag.ai{background:var(--ai-soft);border-color:transparent;color:var(--ai-ink);}
-.tag.ac{background:var(--accent-soft);border-color:transparent;color:var(--accent-ink);}
-
-/* feature row */
-.frow{display:grid;grid-template-columns:170px 1fr;gap:20px;padding:20px 0;border-top:1px solid var(--border);}
-.frow:first-of-type{border-top:none;}
-.frow .lbl{font-weight:700;font-size:15px;}
-.frow .lbl .src{display:block;margin-top:8px;}
-.frow .src .tag{margin:0 4px 4px 0;}
-.frow p{font-size:14px;margin:0 0 8px;color:var(--ink-2);}
-.frow ul.clean{margin:8px 0 0;}
-.frow ul.clean li{font-size:13.5px;}
-.frow ul.clean li:before{margin-top:8px;}
-
-/* integration map */
-.map{border:1px solid var(--border);border-radius:14px;overflow:hidden;margin:20px 0;}
-.map-row{display:grid;grid-template-columns:160px 1fr;gap:16px;padding:14px 18px;border-top:1px solid var(--border);align-items:start;}
-.map-row:first-child{border-top:none;}
-.map-row .sys{display:flex;align-items:center;gap:9px;font-weight:700;font-size:14px;}
-.map-row .sys .dot{width:9px;height:9px;border-radius:99px;flex:none;}
-.map-row p{margin:0;font-size:13.5px;color:var(--ink-2);}
-
-/* color swatches */
-.sw{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:18px 0;}
-.swatch{border:1px solid var(--border);border-radius:12px;overflow:hidden;}
-.swatch .chip{height:64px;}
-.swatch .lab{padding:9px 11px;}
-.swatch .lab b{font-size:13px;font-weight:700;display:block;}
-.swatch .lab code{font-family:var(--mono);font-size:10.5px;color:var(--ink-3);}
-
-/* type scale */
-.type-row{display:flex;align-items:baseline;gap:18px;padding:12px 0;border-top:1px solid var(--border);}
-.type-row:first-child{border-top:none;}
-.type-row .meta{font-family:var(--mono);font-size:11px;color:var(--ink-3);width:120px;flex:none;}
-
-/* callout */
-.callout{border:1px solid color-mix(in oklab,var(--ai) 22%,var(--border));background:var(--ai-soft);border-radius:14px;padding:18px 20px;margin:22px 0;display:flex;gap:14px;}
-.callout .m{width:34px;height:34px;border-radius:10px;background:linear-gradient(135deg,var(--ai),var(--ai-2));display:grid;place-items:center;color:#fff;flex:none;}
-.callout h4{margin:0 0 4px;font-size:14.5px;}
-.callout p{margin:0;font-size:13.5px;color:var(--ink-2);}
-
-/* spec table */
-table.spec{width:100%;border-collapse:collapse;margin:16px 0;font-size:13.5px;}
-table.spec th{text-align:left;font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-faint);font-weight:700;padding:0 12px 9px 0;}
-table.spec td{padding:10px 12px 10px 0;border-top:1px solid var(--border);vertical-align:top;}
-table.spec td:first-child{font-weight:600;white-space:nowrap;}
-table.spec code{font-family:var(--mono);font-size:12px;background:var(--surface-2);border:1px solid var(--border);border-radius:5px;padding:1px 6px;}
-
-.foot{padding:48px 56px;border-top:1px solid var(--border);color:var(--ink-3);font-size:12.5px;text-align:center;}
-
-@media print{
-  body{background:#fff;}
-  .toc{display:none;}
-  .wrap{grid-template-columns:1fr;max-width:none;}
-  .sheet{border:none;}
-  section{break-inside:avoid;}
-  .frow,.tile,.map,.callout{break-inside:avoid;}
-}
-@media (max-width:900px){
-  .wrap{grid-template-columns:1fr;}
-  .toc{display:none;}
-  .inner,.cover{padding-left:28px;padding-right:28px;}
-  .c2,.c3,.sw{grid-template-columns:1fr 1fr;}
-  .frow,.map-row{grid-template-columns:1fr;}
-}
-</style>
-</head>
-<body>
-<div class="wrap">
-  <!-- TOC -->
-  <nav class="toc">
-    <div class="logo">
-      <span class="mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></span>
-      <div><div class="nm">O11Y Command</div><div class="sb">design brief</div></div>
-    </div>
-    <a href="#overview"><span class="n">01</span>Overview &amp; vision</a>
-    <a href="#users"><span class="n">02</span>Users &amp; jobs</a>
-    <a href="#ia"><span class="n">03</span>Information architecture</a>
-    <a href="#features"><span class="n">04</span>Screens &amp; features</a>
-    <a href="#ai"><span class="n">05</span>The AI layer</a>
-    <a href="#integrations"><span class="n">06</span>Integrations map</a>
-    <a href="#designsystem"><span class="n">07</span>Design system</a>
-    <a href="#layout"><span class="n">08</span>Layout &amp; grid</a>
-    <a href="#motion"><span class="n">09</span>Motion &amp; states</a>
-    <a href="#theming"><span class="n">10</span>Theming &amp; tweaks</a>
-    <a href="#roadmap"><span class="n">11</span>Roadmap</a>
-  </nav>
-
-  <!-- DOC -->
-  <div class="doc">
-    <div class="sheet">
-      <!-- COVER -->
-      <header class="cover">
-        <div class="eyebrow">SRE Command &amp; Control Center · Product design brief</div>
-        <h1>O11Y Command</h1>
-        <p class="lede">A single, calm operating surface for site reliability teams — unifying alerts, incidents, service topology, SLOs, on-call and change into one daily driver, with an AI copilot woven through every view.</p>
-        <div class="meta">
-          <div><div class="k">Version</div><div class="v">1.0 — Prototype</div></div>
-          <div><div class="k">Date</div><div class="v">June 5, 2026</div></div>
-          <div><div class="k">Surface</div><div class="v">Desktop web app</div></div>
-          <div><div class="k">Status</div><div class="v">Hi-fi clickable</div></div>
+  return (
+    <>
+      <div className="cp-overlay" onClick={onClose} />
+      <aside className="cp-drawer" role="dialog" aria-label="O11Y Copilot">
+        <div className="cp-head">
+          <span className="ai-mark ai-grad" style={{ width: 32, height: 32 }}><Icon name="sparkles" size={17} /></span>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 14.5, fontWeight: 700, letterSpacing: '-0.01em' }}>O11Y Copilot</div>
+            <div className="row" style={{ gap: 6 }}>
+              <span className="dot ok" style={{ width: 6, height: 6 }} />
+              <span style={{ fontSize: 11, color: 'var(--ink-3)' }}>Grounded in live production state</span>
+            </div>
+          </div>
+          <button className="icon-btn" onClick={onClose} title="Close"><Icon name="x" size={16} /></button>
         </div>
-      </header>
 
-      <div class="inner">
-        <!-- 01 OVERVIEW -->
-        <section id="overview">
-          <div class="kick">01 — Overview &amp; vision</div>
-          <h2>One pane of glass that stays calm under pressure</h2>
-          <p class="lead-in">SRE teams live across a dozen tools. The signal that matters during an incident is scattered between Grafana, ServiceNow, Jira, the CMDB, an alert firehose, and a paging tool. O11Y Command pulls those streams into a single, opinionated workspace — built to be the tab that's always open, and the place you run an incident from.</p>
-          <p>The product is designed around two modes that share one shell: a <strong>steady-state</strong> mode for monitoring health, ownership and upcoming change; and an <strong>incident</strong> mode where the same data collapses into a war room. The visual language is deliberately understated — generous whitespace, soft surfaces, a restrained palette — so that the only things that shout are the things that are actually on fire.</p>
-          <div class="cards c3">
-            <div class="tile"><div class="ico" style="background:var(--crit);color:#fff;"><svg viewBox="0 0 24 24" width="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.07-2.14-.22-4.05 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.15.43-2.29 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg></div><h4>Triage faster</h4><p>Correlated alerts, blast radius and likely cause are one glance away — not five tabs.</p></div>
-            <div class="tile"><div class="ico" style="background:var(--accent);color:#fff;"><svg viewBox="0 0 24 24" width="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg></div><h4>See the whole system</h4><p>Service health, dependencies and SLO budgets live in one connected model.</p></div>
-            <div class="tile"><div class="ico" style="background:linear-gradient(135deg,var(--ai),var(--ai-2));color:#fff;"><svg viewBox="0 0 24 24" width="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8L12 3z"/></svg></div><h4>Close the loop</h4><p>Copilot drafts the status update and the postmortem so the work doesn't end at recovery.</p></div>
+        <div className="cp-body" ref={bodyRef}>
+          {messages.map((m, i) => (
+            <div key={i} className={'msg' + (m.role === 'user' ? ' me' : '')}>
+              <span className={'msg-av' + (m.role === 'ai' ? ' ai-grad' : '')}>
+                {m.role === 'ai' ? <Icon name="sparkles" size={15} /> : 'PN'}
+              </span>
+              <div className={'bubble ' + m.role}>
+                {m.typing ? <span className="typing"><i /><i /><i /></span> : <Markdown text={m.text} />}
+              </div>
+            </div>
+          ))}
+
+          {showPrompts && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 2 }}>
+              {D.ai.copilotSuggestions.map(s => (
+                <button key={s} className="cp-prompt" onClick={() => send(s)}><Icon name="sparkles" size={13} style={{ color: 'var(--ai)', marginRight: 6, verticalAlign: '-2px' }} />{s}</button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="cp-foot">
+          <div className="cp-input">
+            <textarea rows={1} value={input} placeholder="Ask the copilot…" disabled={busy}
+              onChange={e => { setInput(e.target.value); e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px'; }}
+              onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(input); } }} />
+            <button className="cp-send" disabled={busy || !input.trim()} onClick={() => send(input)}><Icon name="send" size={15} /></button>
           </div>
-        </section>
+          <div style={{ fontSize: 10.5, color: 'var(--ink-faint)', textAlign: 'center' }}>Copilot can take actions on your behalf — review before confirming.</div>
+        </div>
+      </aside>
+    </>
+  );
+}
 
-        <!-- 02 USERS -->
-        <section id="users">
-          <div class="kick">02 — Users &amp; jobs</div>
-          <h2>Built for the whole team, tuned for the person on call</h2>
-          <p>The primary surface is a shared daily driver, but the hierarchy bends toward the on-call engineer mid-incident — the highest-stakes, lowest-patience moment.</p>
-          <div class="frow"><div class="lbl">On-call SRE</div><div><p>The default audience. Needs to know in seconds: what's broken, who's affected, what changed, and what to do next.</p><ul class="clean"><li>Acknowledge and triage from the alert inbox</li><li>Run the incident from the war room</li><li>Lean on the copilot for cause &amp; next steps</li></ul></div></div>
-          <div class="frow"><div class="lbl">Team lead / IC</div><div><p>Coordinates responders, owns comms, and signs off the postmortem.</p><ul class="clean"><li>Track responders, status and duration</li><li>Approve actions and publish updates</li><li>Review the auto-drafted RCA</li></ul></div></div>
-          <div class="frow"><div class="lbl">Wider team</div><div><p>Engineers and managers checking system health, ownership, upcoming change and sprint work.</p><ul class="clean"><li>Glance at SLO budgets and degraded services</li><li>See who's on call and what's shipping</li><li>Track ServiceNow / Jira queues</li></ul></div></div>
-        </section>
-
-        <!-- 03 IA -->
-        <section id="ia">
-          <div class="kick">03 — Information architecture</div>
-          <h2>Seven destinations, one persistent shell</h2>
-          <p>Navigation is grouped into <strong>Monitor</strong> (sense the system) and <strong>Operate</strong> (act on it). A persistent left rail carries live counts; the copilot is reachable from anywhere via the top bar; the RCA flow is summoned by the act of resolving.</p>
-          <div class="cards c2">
-            <div class="tile"><span class="tag ac">Monitor</span><h4 style="margin-top:10px;">Overview · Alerts · Incidents</h4><p>The pulse of production: KPIs and AI insights, the aggregated alert feed, and the incident war room.</p></div>
-            <div class="tile"><span class="tag ac">Operate</span><h4 style="margin-top:10px;">Metrics &amp; SLOs · Project board · On-call · Changes</h4><p>The levers: Grafana panels and CMDB topology, the Jira sprint board, the rotation, and the change calendar.</p></div>
-          </div>
-          <h4>Always-available surfaces</h4>
-          <ul class="clean ai">
-            <li><strong>Copilot drawer</strong> — a grounded AI assistant, one click from the top bar on every screen.</li>
-            <li><strong>RCA modal</strong> — the postmortem draft, triggered the moment an incident is resolved.</li>
-            <li><strong>Tweaks panel</strong> — theme, accent and density controls.</li>
-          </ul>
-        </section>
-
-        <!-- 04 FEATURES -->
-        <section id="features">
-          <div class="kick">04 — Screens &amp; features</div>
-          <h2>What each surface does</h2>
-          <p>Every screen is a composition of the same primitives, each panel tagged with the system it draws from so provenance is always visible.</p>
-
-          <div class="frow">
-            <div class="lbl">Overview<span class="src"><span class="tag">CMDB</span><span class="tag">Grafana</span><span class="tag ai">AI</span></span></div>
-            <div><p>The landing surface. A six-up KPI strip (active incidents, firing alerts, degraded services, SLOs at risk, MTTR, deploys), then a band of <strong>AI insights</strong>, then a two-column working area.</p>
-            <ul class="clean"><li>Active-incident banner with responders &amp; one-click war room</li><li>Service-health grid and featured SLO budgets</li><li>Live alerts, today's changes, on-call now and ticket queues</li></ul></div>
-          </div>
-
-          <div class="frow">
-            <div class="lbl">Alerts inbox<span class="src"><span class="tag">RSS / webhook</span><span class="tag">Grafana</span><span class="tag">ServiceNow</span></span></div>
-            <div><p>An aggregated feed across Grafana, Prometheus, Datadog, CloudWatch and ServiceNow, deduped into one triage queue.</p>
-            <ul class="clean"><li>Filter by severity, status and source</li><li>Acknowledge, resolve and reopen inline</li><li>Detail pane with signal chart and incident correlation</li></ul></div>
-          </div>
-
-          <div class="frow">
-            <div class="lbl">Incident war room<span class="src"><span class="tag">Jira</span><span class="tag">ServiceNow</span><span class="tag ai">AI</span></span></div>
-            <div><p>Everything to run a single incident: a status stepper, a live timeline with a working update composer, and Impact / Telemetry tabs.</p>
-            <ul class="clean"><li>Copilot analysis: root-cause hypothesis, suggested actions, similar past incidents</li><li>Responders, facts and linked Jira / ServiceNow / Slack records</li><li>Resolve → auto-drafted RCA</li></ul></div>
-          </div>
-
-          <div class="frow">
-            <div class="lbl">Metrics &amp; SLOs<span class="src"><span class="tag">Grafana</span><span class="tag">CMDB</span></span></div>
-            <div><p>Three views behind one toggle: SLO/error-budget cards with radial gauges, Grafana telemetry panels, and an interactive dependency topology.</p>
-            <ul class="clean"><li>Click any topology node to trace its dependency graph</li><li>Time-range control and per-service focus</li></ul></div>
-          </div>
-
-          <div class="frow">
-            <div class="lbl">Project board<span class="src"><span class="tag">Jira</span></span></div>
-            <div><p>The team's Jira sprint board — where SRE project and reliability work is planned and tracked, with hardening follow-ups flowing directly from incidents and RCAs.</p>
-            <ul class="clean"><li>Sprint header with goal, points progress, burndown and epic breakdown</li><li>To Do / In Progress / In Review / Done columns with typed, prioritized cards</li><li>Assignee filtering; cards link back to their originating incident</li></ul></div>
-          </div>
-
-          <div class="frow">
-            <div class="lbl">On-call<span class="src"><span class="tag">PagerDuty</span></span></div>
-            <div><p>Who's responsible, now and across the week.</p>
-            <ul class="clean"><li>Per-team primary / secondary cards</li><li>Weekly rotation timeline with handoff markers</li><li>Tiered escalation policy and next-handoff</li></ul></div>
-          </div>
-
-          <div class="frow">
-            <div class="lbl">Change calendar<span class="src"><span class="tag">ServiceNow</span><span class="tag">Jira</span></span></div>
-            <div><p>ServiceNow changes and Jira releases on one weekly grid, color-coded by risk.</p>
-            <ul class="clean"><li>Filter by source and risk; CAB summary stats</li><li>Detail pane with window, owner, type and approvals</li></ul></div>
-          </div>
-        </section>
-
-        <!-- 05 AI -->
-        <section id="ai">
-          <div class="kick">05 — The AI layer</div>
-          <h2>A copilot that knows the current state</h2>
-          <p class="lead-in">AI is not a bolted-on chatbot — it's a connective layer with its own visual identity (a fixed violet, distinct from the tweakable accent) so it reads consistently wherever it appears. Every AI surface is <strong>grounded in the live state</strong>: incidents, alerts, degraded services, SLO budgets, in-flight changes and on-call are passed as context on each request.</p>
-
-          <div class="callout">
-            <span class="m"><svg viewBox="0 0 24 24" width="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8L12 3z"/></svg></span>
-            <div><h4>Three AI surfaces, one identity</h4><p>Proactive insights, the conversational copilot, and the auto-drafted RCA all share the violet treatment, the sparkle mark, and confidence framing — so users always know when they're reading a model's view versus raw telemetry.</p></div>
-          </div>
-
-          <h3>Proactive insights</h3>
-          <p>On the overview, four typed findings surface automatically, each with a confidence score, supporting evidence, and a one-click action:</p>
-          <ul class="clean ai">
-            <li><strong>Correlation</strong> — ties symptoms to a likely trigger (e.g. a recent change).</li>
-            <li><strong>Prediction</strong> — error-budget burn-down and projected breach time.</li>
-            <li><strong>Recommendation</strong> — a remediation grounded in similar past incidents.</li>
-            <li><strong>Anomaly</strong> — a statistical deviation worth a separate look.</li>
-          </ul>
-
-          <h3>The copilot drawer</h3>
-          <p>A slide-over assistant available on every screen. It opens with a situational greeting and suggested prompts, answers free-form questions in grounded prose, and can be invoked pre-filled from any insight's “Ask” affordance. Suggested actions are surfaced for review rather than executed silently.</p>
-
-          <h3>Auto-drafted RCA</h3>
-          <p>Resolving an incident summons a full postmortem draft — an AI-written executive summary over a deterministic spine (metadata, timeline, root cause, contributing factors, resolution, action items, lessons). From the draft, follow-ups push to <strong>Jira</strong> and the document publishes to <strong>Confluence</strong> in one step.</p>
-        </section>
-
-        <!-- 06 INTEGRATIONS -->
-        <section id="integrations">
-          <div class="kick">06 — Integrations map</div>
-          <h2>What each system contributes</h2>
-          <p>The product is a composition surface. Each integration owns a slice of the model and is always attributed in the UI.</p>
-          <div class="map">
-            <div class="map-row"><div class="sys"><span class="dot" style="background:var(--info);"></span>Grafana</div><p>SLI / SLO panels and error budgets, war-room telemetry, and a primary alert source.</p></div>
-            <div class="map-row"><div class="sys"><span class="dot" style="background:var(--ok);"></span>CMDB</div><p>Service topology and the dependency graph, plus service metadata — tier, owner, region, instances.</p></div>
-            <div class="map-row"><div class="sys"><span class="dot" style="background:var(--crit);"></span>ServiceNow</div><p>INC / CHG / RITM / PRB queues, the change calendar, and incident alert signals.</p></div>
-            <div class="map-row"><div class="sys"><span class="dot" style="background:var(--accent);"></span>Jira</div><p>Project &amp; sprint work, incident-linked tickets, change releases, and RCA follow-ups.</p></div>
-            <div class="map-row"><div class="sys"><span class="dot" style="background:var(--ai);"></span>Confluence</div><p>Publishing target for the postmortem / RCA document.</p></div>
-            <div class="map-row"><div class="sys"><span class="dot" style="background:var(--warn);"></span>Alerts RSS</div><p>Aggregated webhook / RSS feed unifying Grafana, Prometheus, Datadog and CloudWatch.</p></div>
-            <div class="map-row"><div class="sys"><span class="dot" style="background:oklch(0.6 0.2 320);"></span>On-call</div><p>Schedule, rotation, escalation policy and paging (PagerDuty-style).</p></div>
-          </div>
-        </section>
-
-        <!-- 07 DESIGN SYSTEM -->
-        <section id="designsystem">
-          <div class="kick">07 — Design system</div>
-          <h2>Quiet by default, loud only when it matters</h2>
-
-          <h3>Color</h3>
-          <p>A cool, near-neutral foundation lets status and AI carry all the meaning. Neutrals are defined in OKLCH at very low chroma; the accent is a single tweakable variable from which soft and ink tints derive.</p>
-          <div class="sw">
-            <div class="swatch"><div class="chip" style="background:var(--accent);"></div><div class="lab"><b>Accent</b><code>#6366f1 · indigo</code></div></div>
-            <div class="swatch"><div class="chip" style="background:linear-gradient(135deg,var(--ai),var(--ai-2));"></div><div class="lab"><b>AI</b><code>violet · fixed</code></div></div>
-            <div class="swatch"><div class="chip" style="background:var(--ink);"></div><div class="lab"><b>Ink</b><code>oklch(.24 .012 270)</code></div></div>
-            <div class="swatch"><div class="chip" style="background:var(--bg);"></div><div class="lab"><b>Canvas</b><code>oklch(.975 .003 270)</code></div></div>
-          </div>
-          <div class="sw">
-            <div class="swatch"><div class="chip" style="background:var(--crit);"></div><div class="lab"><b>Critical</b><code>red</code></div></div>
-            <div class="swatch"><div class="chip" style="background:var(--warn);"></div><div class="lab"><b>Warning</b><code>amber</code></div></div>
-            <div class="swatch"><div class="chip" style="background:var(--ok);"></div><div class="lab"><b>Healthy</b><code>green</code></div></div>
-            <div class="swatch"><div class="chip" style="background:var(--info);"></div><div class="lab"><b>Info</b><code>blue</code></div></div>
-          </div>
-
-          <h3>Typography</h3>
-          <p><strong>Onest</strong> carries all UI and display type — a clean, slightly geometric grotesque. <strong>JetBrains Mono</strong> is reserved for the things that should read as machine data: IDs, timestamps, metric values and source tags.</p>
-          <div class="type-row"><div class="meta">Display / 46–29</div><div style="font-weight:800;letter-spacing:-0.02em;font-size:26px;">Operations overview</div></div>
-          <div class="type-row"><div class="meta">Title / 17–14</div><div style="font-weight:700;font-size:17px;">Service health</div></div>
-          <div class="type-row"><div class="meta">Body / 13–15</div><div style="font-size:14px;color:var(--ink-2);">Customers unable to complete checkout in us-east-1.</div></div>
-          <div class="type-row"><div class="meta">Mono / 10.5–13</div><div class="mono" style="font-size:13px;color:var(--accent-ink);">INC-4821 · 14:23 · 446ms</div></div>
-
-          <h3>Components</h3>
-          <p>A compact kit covers the whole product. Each is theme-aware and density-aware.</p>
-          <div class="cards c3">
-            <div class="tile"><h4>Surfaces</h4><p>Card with attributed header, KPI stat card, list row, segmented control, tabs.</p></div>
-            <div class="tile"><h4>Status</h4><p>Badge, status dot (with pulse for critical), severity stepper, risk pills.</p></div>
-            <div class="tile"><h4>Identity</h4><p>Avatar &amp; overlapping stack, source tags, brand mark.</p></div>
-            <div class="tile"><h4>Data viz</h4><p>Sparkline, gradient area chart, radial budget gauge, segmented bar.</p></div>
-            <div class="tile"><h4>Structures</h4><p>Dependency topology, weekly calendar grid, rotation timeline, event timeline.</p></div>
-            <div class="tile"><h4>AI</h4><p>Insight card, copilot drawer &amp; chat bubbles, RCA document, sparkle marks.</p></div>
-          </div>
-
-          <h3>Iconography &amp; shape</h3>
-          <table class="spec">
-            <tr><td>Icons</td><td>A single inline 24px stroke set — 2px weight, round caps. Functional only; no decorative illustration.</td></tr>
-            <tr><td>Radii</td><td><code>8 / 12 / 16 / 22px</code> — soft but not pill-like; pills reserved for badges and chips.</td></tr>
-            <tr><td>Elevation</td><td>Three soft, low-spread shadows. Surfaces lift on hover, not at rest.</td></tr>
-            <tr><td>Borders</td><td>1px hairlines at very low chroma; status borders mix the status hue into the neutral.</td></tr>
-          </table>
-        </section>
-
-        <!-- 08 LAYOUT -->
-        <section id="layout">
-          <div class="kick">08 — Layout &amp; grid</div>
-          <h2>A fixed rail, a fluid stage</h2>
-          <p>The shell is a persistent <strong>240px sidebar</strong> plus a fluid main column with a 60px top bar. Content lives in a scrolling stage built almost entirely from CSS grid with consistent gaps — never bare inline flow — so panels reflow predictably.</p>
-          <table class="spec">
-            <tr><td>Shell</td><td><code>grid-template-columns: 240px 1fr</code> — sidebar + main; top bar pinned, content scrolls.</td></tr>
-            <tr><td>KPI strip</td><td><code>repeat(6, 1fr)</code> — equal stat cards across the top.</td></tr>
-            <tr><td>Working area</td><td><code>1fr 360px</code> — a primary work column beside a fixed detail / context rail.</td></tr>
-            <tr><td>Insight &amp; viz grids</td><td><code>repeat(2–4, 1fr)</code> — insights, SLOs, panels and service tiles.</td></tr>
-            <tr><td>Spacing</td><td>One <code>--gap</code> and one <code>--pad</code> token, both shifted by density.</td></tr>
-          </table>
-          <p class="muted">Designed desktop-first for wide monitors — the natural home of a command center. Below ~900px the split columns and multi-up grids collapse to single column.</p>
-        </section>
-
-        <!-- 09 MOTION -->
-        <section id="motion">
-          <div class="kick">09 — Motion &amp; states</div>
-          <h2>Motion that informs, never decorates</h2>
-          <ul class="clean">
-            <li><strong>Entrance</strong> — screens settle with a short translate; the visible state is the base, so content is never hidden if motion is suppressed.</li>
-            <li><strong>Overlays</strong> — the copilot slides in from the right; the RCA modal scales up over a blurred backdrop.</li>
-            <li><strong>Liveness</strong> — critical status dots pulse; the copilot shows a typing indicator while drafting.</li>
-            <li><strong>Feedback</strong> — actions confirm in place (Acknowledge → state change; “Create Jira items” → “3 created”).</li>
-            <li><strong>Respect</strong> — all motion honors <code>prefers-reduced-motion</code>.</li>
-          </ul>
-          <p>Interaction states are explicit across the kit: hover lifts surfaces, selection draws an accent ring, disabled dims to ~40%, and empty states explain rather than show a blank panel.</p>
-        </section>
-
-        <!-- 10 THEMING -->
-        <section id="theming">
-          <div class="kick">10 — Theming &amp; tweaks</div>
-          <h2>Adaptable without losing its character</h2>
-          <p>The whole surface is driven by CSS custom properties, so theming is a token swap rather than a rebuild. An in-product Tweaks panel exposes the safe knobs:</p>
-          <div class="cards c3">
-            <div class="tile"><h4>Theme</h4><p>Light and a fully-considered dark mode for NOC walls and night shifts.</p></div>
-            <div class="tile"><h4>Accent</h4><p>Five curated swatches; soft and ink tints derive automatically. The AI violet stays fixed.</p></div>
-            <div class="tile"><h4>Density</h4><p>Comfortable or compact — shifts padding and gap tokens system-wide.</p></div>
-          </div>
-        </section>
-
-        <!-- 11 ROADMAP -->
-        <section id="roadmap">
-          <div class="kick">11 — Roadmap</div>
-          <h2>Where it goes next</h2>
-          <ul class="clean ai">
-            <li><strong>Copilot-suggested alert routing</strong> — dedupe and route across Grafana &amp; Datadog automatically.</li>
-            <li><strong>“Explain this chart”</strong> — an AI affordance on every Grafana panel.</li>
-            <li><strong>NOC wall-display mode</strong> — a full-screen, auto-rotating view for shared screens.</li>
-            <li><strong>Runbook execution</strong> — turn suggested actions into reviewed, audited one-click runbooks.</li>
-            <li><strong>Live data binding</strong> — replace the mock layer with real Grafana / ServiceNow / CMDB connectors.</li>
-          </ul>
-        </section>
-      </div>
-
-      <div class="foot">O11Y Command · SRE Command &amp; Control Center — Design Brief v1.0 · Prototype is a hi-fi clickable artifact with illustrative data.</div>
-    </div>
-  </div>
-</div>
-</body>
-</html>
+window.CopilotDrawer = CopilotDrawer;
