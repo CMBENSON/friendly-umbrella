@@ -1,77 +1,156 @@
-/* O11Y Command — icon set. Simple 24px stroke icons, offline. */
-const ICONS = {
-  dashboard: 'M3 3h7v9H3zM14 3h7v5h-7zM14 12h7v9h-7zM3 16h7v5H3z',
-  bell: 'M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9|M10.3 21a1.94 1.94 0 0 0 3.4 0',
-  flame: 'M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.07-2.14-.22-4.05 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.15.43-2.29 1-3a2.5 2.5 0 0 0 2.5 2.5z',
-  calendarClock: 'M21 7.5V6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2h6|M16 2v4M8 2v4M3 10h18|M17.5 17.5L16 16.3V14|M22 16a6 6 0 1 1-12 0 6 6 0 0 1 12 0z',
-  activity: 'M22 12h-4l-3 9L9 3l-3 9H2',
-  network: 'M9 2h6v6H9zM16 16h6v6h-6zM2 16h6v6H2|M5 16v-3a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v3M12 12V8',
-  calendar: 'M8 2v4M16 2v4M3 10h18|M5 4h14a2 2 0 0 1 2 2v13a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z',
-  sliders: 'M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6',
-  search: 'M11 11m-8 0a8 8 0 1 0 16 0a8 8 0 1 0-16 0|M21 21l-4.3-4.3',
-  command: 'M15 6a3 3 0 1 0 3 3H6a3 3 0 1 0 3-3v12a3 3 0 1 0-3-3h12a3 3 0 1 0-3 3z',
-  plus: 'M12 5v14M5 12h14',
-  chevronRight: 'M9 18l6-6-6-6',
-  chevronDown: 'M6 9l6 6 6-6',
-  chevronLeft: 'M15 18l-6-6 6-6',
-  externalLink: 'M15 3h6v6M10 14L21 3|M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6',
-  check: 'M20 6L9 17l-5-5',
-  x: 'M18 6L6 18M6 6l12 12',
-  clock: 'M12 12m-10 0a10 10 0 1 0 20 0a10 10 0 1 0-20 0|M12 6v6l4 2',
-  arrowUp: 'M12 19V5M5 12l7-7 7 7',
-  arrowDown: 'M12 5v14M5 12l7 7 7-7',
-  trendUp: 'M22 7l-8.5 8.5-5-5L2 17|M16 7h6v6',
-  trendDown: 'M22 17l-8.5-8.5-5 5L2 7|M16 17h6v-6',
-  more: 'M12 12m-1 0a1 1 0 1 0 2 0a1 1 0 1 0-2 0|M19 12m-1 0a1 1 0 1 0 2 0a1 1 0 1 0-2 0|M5 12m-1 0a1 1 0 1 0 2 0a1 1 0 1 0-2 0',
-  filter: 'M22 3H2l8 9.46V19l4 2v-8.54L22 3z',
-  refresh: 'M3 12a9 9 0 0 1 15-6.7L21 8|M21 3v5h-5|M21 12a9 9 0 0 1-15 6.7L3 16|M3 21v-5h5',
-  users: 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2|M9 11m-4 0a4 4 0 1 0 8 0a4 4 0 1 0-8 0|M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75',
-  user: 'M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2|M12 7m-4 0a4 4 0 1 0 8 0a4 4 0 1 0-8 0',
-  server: 'M3 4h18v6H3zM3 14h18v6H3|M7 7h.01M7 17h.01',
-  database: 'M12 5m-9 0a9 4 0 1 0 18 0a9 4 0 1 0-18 0|M3 5v14a9 4 0 0 0 18 0V5M3 12a9 4 0 0 0 18 0',
-  gitBranch: 'M6 3v12|M18 6m-3 0a3 3 0 1 0 6 0a3 3 0 1 0-6 0|M6 21m-3 0a3 3 0 1 0 6 0a3 3 0 1 0-6 0|M15 6a9 9 0 0 1-9 9',
-  zap: 'M13 2L3 14h9l-1 8 10-12h-9l1-8z',
-  shield: 'M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z',
-  message: 'M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z',
-  play: 'M6 3l14 9-14 9V3z',
-  pause: 'M6 4h4v16H6zM14 4h4v16h-4z',
-  dotCircle: 'M12 12m-10 0a10 10 0 1 0 20 0a10 10 0 1 0-20 0|M12 12m-3 0a3 3 0 1 0 6 0a3 3 0 1 0-6 0',
-  alertTriangle: 'M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z|M12 9v4M12 17h.01',
-  alertOctagon: 'M7.9 2h8.2L22 7.9v8.2L16.1 22H7.9L2 16.1V7.9L7.9 2z|M12 8v4M12 16h.01',
-  checkCircle: 'M22 11.1V12a10 10 0 1 1-5.9-9.1|M22 4L12 14.01l-3-3',
-  mapPin: 'M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0z|M12 10m-3 0a3 3 0 1 0 6 0a3 3 0 1 0-6 0',
-  link: 'M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7|M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7',
-  layers: 'M12 2 2 7l10 5 10-5-10-5z|M2 17l10 5 10-5M2 12l10 5 10-5',
-  sun: 'M12 12m-5 0a5 5 0 1 0 10 0a5 5 0 1 0-10 0|M12 1v2M12 21v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M1 12h2M21 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4',
-  moon: 'M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z',
-  eye: 'M2 12s4-8 10-8 10 8 10 8-4 8-10 8-10-8-10-8z|M12 12m-3 0a3 3 0 1 0 6 0a3 3 0 1 0-6 0',
-  pin: 'M12 17v5|M9 10.8V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v5.8l1.7 2.3a1 1 0 0 1-.8 1.6H8.1a1 1 0 0 1-.8-1.6L9 10.8z',
-  phone: 'M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3 19.5 19.5 0 0 1-6-6 19.8 19.8 0 0 1-3-8.6A2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.3 1.8.6 2.6a2 2 0 0 1-.5 2.1L8.1 9.9a16 16 0 0 0 6 6l1.5-1.1a2 2 0 0 1 2.1-.5c.8.3 1.7.5 2.6.6a2 2 0 0 1 1.7 2z',
-  list: 'M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01',
-  grid: 'M3 3h7v7H3zM14 3h7v7h-7zM14 14h7v7h-7zM3 14h7v7H3z',
-  sparkles: 'M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8L12 3z|M18.5 15l.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8.8-2.2',
-  send: 'M22 2L11 13|M22 2l-7 20-4-9-9-4 20-7z',
-  copy: 'M9 9h11a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-9a2 2 0 0 1-2-2v-9a2 2 0 0 1 2-2z|M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1',
-  undo: 'M9 14L4 9l5-5|M4 9h11a6 6 0 0 1 0 12h-3',
-  thumbsUp: 'M7 10v12|M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.76a2 2 0 0 0 1.79-1.11L12 2a3.13 3.13 0 0 1 3 3.88z',
-  lightbulb: 'M9 18h6|M10 22h4|M15.1 14c.2-.98.66-1.74 1.4-2.5A4.65 4.65 0 0 0 18 8 6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.75.76 1.2 1.52 1.4 2.5',
-  target: 'M12 12m-10 0a10 10 0 1 0 20 0a10 10 0 1 0-20 0|M12 12m-6 0a6 6 0 1 0 12 0a6 6 0 1 0-12 0|M12 12m-2 0a2 2 0 1 0 4 0a2 2 0 1 0-4 0',
-  board: 'M4 3h16a1 1 0 0 1 1 1v16a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z|M9 7v10M15 7v6',
-};
+/* O11Y Command — RCA / postmortem modal, auto-drafted on resolve */
 
-function Icon({ name, size, style, className }) {
-  const raw = ICONS[name];
-  if (!raw) return null;
-  const segs = raw.split('|');
+function rcaDuration(start) {
+  const m = Math.round((window.DB.now - start) / 60000);
+  const h = Math.floor(m / 60);
+  return (h > 0 ? h + 'h ' : '') + (m % 60) + 'm';
+}
+
+function RcaModal({ incId, onClose, go }) {
+  const D = window.DB;
+  const inc = D.incidents.find(i => i.id === incId);
+  const r = D.ai.rca[incId];
+  const [summary, setSummary] = useState(null); // null = drafting
+  const [pub, setPub] = useState(false);
+  const [jira, setJira] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  // draft the executive summary (live AI, with the canned summary as fallback)
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      let text = r.executiveSummary;
+      try {
+        if (window.claude && window.claude.complete) {
+          const prompt = D.ai.buildContext() +
+            '\n\nThe incident ' + incId + ' (' + inc.title + ') has just been resolved. Write a concise 2-3 sentence executive summary for its postmortem, in past tense, suitable for leadership. Plain prose, no markdown, no preamble.';
+          const out = await window.claude.complete(prompt);
+          if (out && out.trim()) text = out.trim();
+        }
+      } catch (e) { /* fallback */ }
+      if (alive) setTimeout(() => alive && setSummary(text), 350);
+    })();
+    return () => { alive = false; };
+  }, [incId]);
+
+  const copyDoc = () => {
+    const lines = [
+      'POSTMORTEM — ' + incId + ': ' + inc.title,
+      'Severity ' + r.severity + ' · Duration ' + rcaDuration(inc.startedAt) + ' · IC ' + inc.commander,
+      '', 'EXECUTIVE SUMMARY', summary || r.executiveSummary,
+      '', 'ROOT CAUSE', r.rootCause,
+      '', 'CONTRIBUTING FACTORS', ...r.contributingFactors.map(x => '- ' + x),
+      '', 'RESOLUTION', ...r.resolution.map(x => '- ' + x),
+      '', 'ACTION ITEMS', ...r.actionItems.map(a => '- [' + a.jira + '] ' + a.task + ' (' + a.owner + ', due ' + a.due + ')'),
+      '', 'LESSONS LEARNED', ...r.lessons.map(x => '- ' + x),
+    ].join('\n');
+    navigator.clipboard && navigator.clipboard.writeText(lines).catch(() => {});
+    setCopied(true); setTimeout(() => setCopied(false), 1800);
+  };
+
   return (
-    <svg
-      width={size || 18} height={size || 18} viewBox="0 0 24 24" fill="none"
-      stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
-      className={className} style={style} aria-hidden="true"
-    >
-      {segs.map((d, i) => <path key={i} d={d} />)}
-    </svg>
+    <div className="rca-overlay" onClick={onClose}>
+      <div className="rca-modal" onClick={e => e.stopPropagation()} role="dialog" aria-label="RCA draft">
+        <div className="rca-head">
+          <span className="ai-mark ai-grad" style={{ width: 32, height: 32 }}><Icon name="sparkles" size={17} /></span>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 14.5, fontWeight: 700 }}>Postmortem — RCA draft</div>
+            <div className="row" style={{ gap: 7 }}>
+              <Badge tone="ok" dot>Incident resolved</Badge>
+              <span className="mono" style={{ fontSize: 11, color: 'var(--ink-3)' }}>{incId}</span>
+              <span className="ai-chip"><Icon name="sparkles" size={11} />Auto-drafted by Copilot</span>
+            </div>
+          </div>
+          <button className="icon-btn" onClick={onClose} title="Close"><Icon name="x" size={16} /></button>
+        </div>
+
+        <div className="rca-body">
+          <div className="rca-doc">
+            <div className="rca-title">{inc.title}</div>
+            <div className="rca-meta">
+              {[['Incident', incId], ['Severity', r.severity], ['Duration', rcaDuration(inc.startedAt)], ['Incident commander', inc.commander],
+                ['Detected by', r.detectedBy], ['Affected services', inc.services.join(', ')]].map(([k, v]) => (
+                <div key={k}><div className="k">{k}</div><div className="v">{v}</div></div>
+              ))}
+            </div>
+
+            <div className="rca-sec">
+              <h4><Icon name="sparkles" size={13} style={{ color: 'var(--ai)' }} />Executive summary</h4>
+              {summary === null
+                ? <div className="row" style={{ gap: 10, color: 'var(--ink-3)', fontSize: 13 }}><span className="typing"><i /><i /><i /></span> Copilot is drafting the summary…</div>
+                : <p>{summary}</p>}
+            </div>
+
+            <div className="rca-sec">
+              <h4>Impact</h4>
+              <p>{r.impact}</p>
+            </div>
+
+            <div className="rca-sec">
+              <h4>Timeline</h4>
+              <div className="rca-tl">
+                {inc.timeline.map((e, i) => (
+                  <div key={i} className="rca-tl-row">
+                    <span className="t">{D.fmtTime(e.t)}</span>
+                    <span><strong style={{ fontWeight: 700 }}>{e.who}</strong> — {e.text}</span>
+                  </div>
+                ))}
+                <div className="rca-tl-row"><span className="t">{D.fmtTime(D.now)}</span><span><strong style={{ fontWeight: 700 }}>{inc.commander}</strong> — Incident resolved and marked recovered.</span></div>
+              </div>
+            </div>
+
+            <div className="rca-sec">
+              <h4>Root cause</h4>
+              <p>{r.rootCause}</p>
+            </div>
+
+            <div className="rca-sec">
+              <h4>Contributing factors</h4>
+              <ul>{r.contributingFactors.map((x, i) => <li key={i}>{x}</li>)}</ul>
+            </div>
+
+            <div className="rca-sec">
+              <h4>Resolution</h4>
+              <ul>{r.resolution.map((x, i) => <li key={i}>{x}</li>)}</ul>
+            </div>
+
+            <div className="rca-sec">
+              <h4>Action items</h4>
+              <table className="rca-ai-table">
+                <thead><tr><th>Follow-up</th><th>Owner</th><th>Due</th><th>Priority</th></tr></thead>
+                <tbody>
+                  {r.actionItems.map((a, i) => (
+                    <tr key={i}>
+                      <td><div style={{ fontWeight: 600 }}>{a.task}</div><span className="mono" style={{ fontSize: 11, color: 'var(--accent-ink)' }}>{a.jira}</span></td>
+                      <td>{a.owner}</td>
+                      <td className="mono" style={{ fontSize: 12 }}>{a.due}</td>
+                      <td><Badge tone={a.priority === 'High' ? 'crit' : 'warn'}>{a.priority}</Badge></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="rca-sec">
+              <h4>Lessons learned</h4>
+              <ul>{r.lessons.map((x, i) => <li key={i}>{x}</li>)}</ul>
+            </div>
+          </div>
+        </div>
+
+        <div className="rca-foot">
+          <button className="btn sm" onClick={copyDoc}><Icon name={copied ? 'check' : 'copy'} size={14} />{copied ? 'Copied' : 'Copy'}</button>
+          <div style={{ flex: 1 }} />
+          <button className="btn sm" onClick={() => setJira(true)} disabled={jira}>
+            <Icon name={jira ? 'check' : 'externalLink'} size={14} />{jira ? r.actionItems.length + ' Jira items created' : 'Create ' + r.actionItems.length + ' Jira follow-ups'}
+          </button>
+          <button className="btn sm primary" onClick={() => setPub(true)} disabled={pub}>
+            <Icon name={pub ? 'check' : 'layers'} size={14} />{pub ? 'Published to Confluence' : 'Publish to Confluence'}
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
 
-window.Icon = Icon;
+window.RcaModal = RcaModal;

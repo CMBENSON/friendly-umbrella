@@ -1,156 +1,258 @@
-/* O11Y Command — RCA / postmortem modal, auto-drafted on resolve */
+/* O11Y Command — Toolbox: floating radial tool launcher.
+   3 wheel styles (orbit / fan / dual-ring), mocked deep-link launch. */
+const { useState: tbxUseState, useEffect: tbxUseEffect, useRef: tbxUseRef, useMemo: tbxUseMemo } = React;
 
-function rcaDuration(start) {
-  const m = Math.round((window.DB.now - start) / 60000);
-  const h = Math.floor(m / 60);
-  return (h > 0 ? h + 'h ' : '') + (m % 60) + 'm';
+/* ---- the day-to-day + investigation toolset ----
+   monogram tiles in brand-adjacent colors (original marks, not logos) */
+const TOOLS = [
+  { id: 'grafana',   name: 'Grafana',      mono: 'Gr', color: '#F46800', cat: 'Observe',     url: 'grafana.o11y.io/d/checkout-api',        live: 'crit' },
+  { id: 'prometheus',name: 'Prometheus',   mono: 'Pr', color: '#E6522C', cat: 'Observe',     url: 'prom.o11y.io/graph?expr=rate(5xx)' },
+  { id: 'datadog',   name: 'Datadog',      mono: 'Dd', color: '#7A37C9', cat: 'Observe',     url: 'app.datadoghq.com/apm/services' },
+  { id: 'splunk',    name: 'Splunk',       mono: 'Sp', color: '#D5471F', cat: 'Observe',     url: 'o11y.splunkcloud.com/search' },
+  { id: 'kibana',    name: 'Kibana',       mono: 'Kb', color: '#00A99D', cat: 'Observe',     url: 'kibana.o11y.io/app/discover' },
+  { id: 'cloudwatch',name: 'CloudWatch',   mono: 'Cw', color: '#C7205E', cat: 'Observe',     url: 'console.aws.amazon.com/cloudwatch',     live: 'warn' },
+  { id: 'pagerduty', name: 'PagerDuty',    mono: 'Pd', color: '#06AC38', cat: 'Respond',     url: 'o11y.pagerduty.com/incidents',          live: 'crit' },
+  { id: 'servicenow',name: 'ServiceNow',   mono: 'Sn', color: '#1C8C6B', cat: 'Respond',     url: 'o11y.service-now.com/nav/incidents' },
+  { id: 'statuspage',name: 'Status page',  mono: 'St', color: '#2E9E54', cat: 'Respond',     url: 'status.o11y.io/manage' },
+  { id: 'slack',     name: 'Slack',        mono: 'Sl', color: '#5B1A56', cat: 'Respond',     url: 'o11y.slack.com/archives/inc-4821' },
+  { id: 'jira',      name: 'Jira',         mono: 'Ji', color: '#2684FF', cat: 'Ship',        url: 'o11y.atlassian.net/jira/board' },
+  { id: 'github',    name: 'GitHub',       mono: 'Gh', color: '#30363D', cat: 'Ship',        url: 'github.com/o11y/checkout' },
+  { id: 'kubectl',   name: 'Terminal',     mono: '›_', color: '#326CE5', cat: 'Ship',        url: 'kubectl get pods -n production' },
+  { id: 'runbooks',  name: 'Runbooks',     mono: 'Rb', color: '#0C66E4', cat: 'Ship',        url: 'o11y.atlassian.net/wiki/runbooks' },
+];
+
+const CAT_ORDER = ['Observe', 'Respond', 'Ship'];
+
+/* polar → cartesian; angle in degrees, 0° = up, clockwise */
+function tbxPolar(deg, r) {
+  const a = (deg - 90) * Math.PI / 180;
+  return { x: Math.cos(a) * r, y: Math.sin(a) * r };
 }
 
-function RcaModal({ incId, onClose, go }) {
-  const D = window.DB;
-  const inc = D.incidents.find(i => i.id === incId);
-  const r = D.ai.rca[incId];
-  const [summary, setSummary] = useState(null); // null = drafting
-  const [pub, setPub] = useState(false);
-  const [jira, setJira] = useState(false);
-  const [copied, setCopied] = useState(false);
-
-  // draft the executive summary (live AI, with the canned summary as fallback)
-  useEffect(() => {
-    let alive = true;
-    (async () => {
-      let text = r.executiveSummary;
-      try {
-        if (window.claude && window.claude.complete) {
-          const prompt = D.ai.buildContext() +
-            '\n\nThe incident ' + incId + ' (' + inc.title + ') has just been resolved. Write a concise 2-3 sentence executive summary for its postmortem, in past tense, suitable for leadership. Plain prose, no markdown, no preamble.';
-          const out = await window.claude.complete(prompt);
-          if (out && out.trim()) text = out.trim();
-        }
-      } catch (e) { /* fallback */ }
-      if (alive) setTimeout(() => alive && setSummary(text), 350);
-    })();
-    return () => { alive = false; };
-  }, [incId]);
-
-  const copyDoc = () => {
-    const lines = [
-      'POSTMORTEM — ' + incId + ': ' + inc.title,
-      'Severity ' + r.severity + ' · Duration ' + rcaDuration(inc.startedAt) + ' · IC ' + inc.commander,
-      '', 'EXECUTIVE SUMMARY', summary || r.executiveSummary,
-      '', 'ROOT CAUSE', r.rootCause,
-      '', 'CONTRIBUTING FACTORS', ...r.contributingFactors.map(x => '- ' + x),
-      '', 'RESOLUTION', ...r.resolution.map(x => '- ' + x),
-      '', 'ACTION ITEMS', ...r.actionItems.map(a => '- [' + a.jira + '] ' + a.task + ' (' + a.owner + ', due ' + a.due + ')'),
-      '', 'LESSONS LEARNED', ...r.lessons.map(x => '- ' + x),
-    ].join('\n');
-    navigator.clipboard && navigator.clipboard.writeText(lines).catch(() => {});
-    setCopied(true); setTimeout(() => setCopied(false), 1800);
-  };
-
+function ToolTile({ tool, x, y, idx, shown, dim, labels, onHover, onLeave, onPick, anchorCenter }) {
+  const tx = anchorCenter ? `translate(calc(-50% + ${x}px), calc(-50% + ${y}px))`
+                          : `translate(calc(-50% + ${x}px), calc(-50% + ${y}px))`;
+  const hidden = `translate(-50%, -50%) scale(.3)`;
   return (
-    <div className="rca-overlay" onClick={onClose}>
-      <div className="rca-modal" onClick={e => e.stopPropagation()} role="dialog" aria-label="RCA draft">
-        <div className="rca-head">
-          <span className="ai-mark ai-grad" style={{ width: 32, height: 32 }}><Icon name="sparkles" size={17} /></span>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 14.5, fontWeight: 700 }}>Postmortem — RCA draft</div>
-            <div className="row" style={{ gap: 7 }}>
-              <Badge tone="ok" dot>Incident resolved</Badge>
-              <span className="mono" style={{ fontSize: 11, color: 'var(--ink-3)' }}>{incId}</span>
-              <span className="ai-chip"><Icon name="sparkles" size={11} />Auto-drafted by Copilot</span>
-            </div>
-          </div>
-          <button className="icon-btn" onClick={onClose} title="Close"><Icon name="x" size={16} /></button>
-        </div>
-
-        <div className="rca-body">
-          <div className="rca-doc">
-            <div className="rca-title">{inc.title}</div>
-            <div className="rca-meta">
-              {[['Incident', incId], ['Severity', r.severity], ['Duration', rcaDuration(inc.startedAt)], ['Incident commander', inc.commander],
-                ['Detected by', r.detectedBy], ['Affected services', inc.services.join(', ')]].map(([k, v]) => (
-                <div key={k}><div className="k">{k}</div><div className="v">{v}</div></div>
-              ))}
-            </div>
-
-            <div className="rca-sec">
-              <h4><Icon name="sparkles" size={13} style={{ color: 'var(--ai)' }} />Executive summary</h4>
-              {summary === null
-                ? <div className="row" style={{ gap: 10, color: 'var(--ink-3)', fontSize: 13 }}><span className="typing"><i /><i /><i /></span> Copilot is drafting the summary…</div>
-                : <p>{summary}</p>}
-            </div>
-
-            <div className="rca-sec">
-              <h4>Impact</h4>
-              <p>{r.impact}</p>
-            </div>
-
-            <div className="rca-sec">
-              <h4>Timeline</h4>
-              <div className="rca-tl">
-                {inc.timeline.map((e, i) => (
-                  <div key={i} className="rca-tl-row">
-                    <span className="t">{D.fmtTime(e.t)}</span>
-                    <span><strong style={{ fontWeight: 700 }}>{e.who}</strong> — {e.text}</span>
-                  </div>
-                ))}
-                <div className="rca-tl-row"><span className="t">{D.fmtTime(D.now)}</span><span><strong style={{ fontWeight: 700 }}>{inc.commander}</strong> — Incident resolved and marked recovered.</span></div>
-              </div>
-            </div>
-
-            <div className="rca-sec">
-              <h4>Root cause</h4>
-              <p>{r.rootCause}</p>
-            </div>
-
-            <div className="rca-sec">
-              <h4>Contributing factors</h4>
-              <ul>{r.contributingFactors.map((x, i) => <li key={i}>{x}</li>)}</ul>
-            </div>
-
-            <div className="rca-sec">
-              <h4>Resolution</h4>
-              <ul>{r.resolution.map((x, i) => <li key={i}>{x}</li>)}</ul>
-            </div>
-
-            <div className="rca-sec">
-              <h4>Action items</h4>
-              <table className="rca-ai-table">
-                <thead><tr><th>Follow-up</th><th>Owner</th><th>Due</th><th>Priority</th></tr></thead>
-                <tbody>
-                  {r.actionItems.map((a, i) => (
-                    <tr key={i}>
-                      <td><div style={{ fontWeight: 600 }}>{a.task}</div><span className="mono" style={{ fontSize: 11, color: 'var(--accent-ink)' }}>{a.jira}</span></td>
-                      <td>{a.owner}</td>
-                      <td className="mono" style={{ fontSize: 12 }}>{a.due}</td>
-                      <td><Badge tone={a.priority === 'High' ? 'crit' : 'warn'}>{a.priority}</Badge></td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            <div className="rca-sec">
-              <h4>Lessons learned</h4>
-              <ul>{r.lessons.map((x, i) => <li key={i}>{x}</li>)}</ul>
-            </div>
-          </div>
-        </div>
-
-        <div className="rca-foot">
-          <button className="btn sm" onClick={copyDoc}><Icon name={copied ? 'check' : 'copy'} size={14} />{copied ? 'Copied' : 'Copy'}</button>
-          <div style={{ flex: 1 }} />
-          <button className="btn sm" onClick={() => setJira(true)} disabled={jira}>
-            <Icon name={jira ? 'check' : 'externalLink'} size={14} />{jira ? r.actionItems.length + ' Jira items created' : 'Create ' + r.actionItems.length + ' Jira follow-ups'}
-          </button>
-          <button className="btn sm primary" onClick={() => setPub(true)} disabled={pub}>
-            <Icon name={pub ? 'check' : 'layers'} size={14} />{pub ? 'Published to Confluence' : 'Publish to Confluence'}
-          </button>
-        </div>
-      </div>
-    </div>
+    <button
+      className={'tbx-tile' + (dim ? ' dim' : '') + (labels ? ' labels' : '')}
+      style={{ transform: shown ? tx : hidden, transitionDelay: (shown ? idx * 22 : 0) + 'ms' }}
+      onMouseEnter={() => onHover(tool)}
+      onMouseLeave={onLeave}
+      onFocus={() => onHover(tool)}
+      onClick={() => onPick(tool)}
+      title={tool.name}
+    >
+      <span className="disc" style={{ background: tool.color }}>
+        {tool.mono}
+        {tool.live && <span className="badge-dot" style={{ background: 'var(--' + tool.live + ')' }} />}
+      </span>
+      <span className="lbl">{tool.name}</span>
+    </button>
   );
 }
 
-window.RcaModal = RcaModal;
+function Toolbox({ style = 'orbit', wantLabels = false, scrim = true }) {
+  const [open, setOpen] = tbxUseState(false);
+  const [shown, setShown] = tbxUseState(false);
+  const [hover, setHover] = tbxUseState(null);
+  const [q, setQ] = tbxUseState('');
+  const [toast, setToast] = tbxUseState(null);
+  const searchRef = tbxUseRef(null);
+
+  // animate-in flag
+  tbxUseEffect(() => {
+    if (open) {
+      const id = setTimeout(() => setShown(true), 24);
+      return () => clearTimeout(id);
+    }
+    setShown(false); setHover(null); setQ('');
+  }, [open]);
+
+  // global key handling: T toggles, Esc closes
+  tbxUseEffect(() => {
+    const onKey = (e) => {
+      const typing = /^(input|textarea|select)$/i.test(document.activeElement?.tagName || '');
+      if (e.key === 'Escape' && open) { setOpen(false); return; }
+      if (!open && !typing && (e.key === 't' || e.key === 'T') && !e.metaKey && !e.ctrlKey && !e.altKey) {
+        e.preventDefault(); setOpen(true);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [open]);
+
+  // focus search shortly after centered wheels open
+  tbxUseEffect(() => {
+    if (open && shown && style !== 'fan') {
+      const id = setTimeout(() => searchRef.current?.focus(), 360);
+      return () => clearTimeout(id);
+    }
+  }, [open, shown, style]);
+
+  const matches = (tool) => !q.trim() || (tool.name + ' ' + tool.cat).toLowerCase().includes(q.trim().toLowerCase());
+  const filtered = tbxUseMemo(() => TOOLS.filter(matches), [q]);
+
+  const pick = (tool) => {
+    setToast({ tool, n: Date.now() });
+    setOpen(false);
+  };
+
+  // ---- geometry per style ----
+  let placed = [];      // { tool, x, y, idx }
+  let cats = [];        // { label, y }
+  let wheelSize = 540;
+
+  if (style === 'orbit') {
+    const r = 200; wheelSize = 540;
+    TOOLS.forEach((tool, i) => {
+      const { x, y } = tbxPolar((360 / TOOLS.length) * i, r);
+      placed.push({ tool, x, y, idx: i });
+    });
+  } else if (style === 'dual') {
+    wheelSize = 620;
+    const observe = TOOLS.filter(t => t.cat === 'Observe');
+    const rest = TOOLS.filter(t => t.cat !== 'Observe');
+    const rIn = 132, rOut = 252;
+    observe.forEach((tool, i) => {
+      const { x, y } = tbxPolar((360 / observe.length) * i, rIn);
+      placed.push({ tool, x, y, idx: i });
+    });
+    rest.forEach((tool, i) => {
+      const { x, y } = tbxPolar((360 / rest.length) * i + 16, rOut);
+      placed.push({ tool, x, y, idx: observe.length + i });
+    });
+    cats = [{ label: 'Observe', y: -rIn - 34 }, { label: 'Respond · Ship', y: -rOut - 30 }];
+  } else { // fan — graduated arcs opening up-and-left from the bottom-right FAB
+    const rows = [
+      { r: 106, items: TOOLS.slice(0, 3) },
+      { r: 178, items: TOOLS.slice(3, 8) },
+      { r: 250, items: TOOLS.slice(8) },
+    ];
+    let n0 = 0;
+    rows.forEach((row) => {
+      const n = row.items.length;
+      row.items.forEach((tool, i) => {
+        // 0°=up, 270°=left → sweep the up-left quadrant
+        const deg = n === 1 ? 315 : 272 + (i / (n - 1)) * 86;
+        const { x, y } = tbxPolar(deg, row.r);
+        placed.push({ tool, x, y, idx: n0 + i });
+      });
+      n0 += n;
+    });
+  }
+
+  const active = hover;
+  const centered = style !== 'fan';
+
+  return (
+    <>
+      {/* FAB */}
+      <div className="tbx-fab-wrap">
+        <div className="tbx-fab-tip">Toolbox <span className="kbd">T</span></div>
+        <button
+          className={'tbx-fab' + (open ? ' open' : '') + (!open ? ' pinging' : '')}
+          onClick={() => setOpen(o => !o)}
+          aria-label={open ? 'Close toolbox' : 'Open toolbox'}
+          aria-expanded={open}
+        >
+          <span className="fab-ring" />
+          <span className="glyph"><Icon name={open ? 'x' : 'grid'} size={23} /></span>
+        </button>
+      </div>
+
+      {/* Overlay + wheel */}
+      {open && (
+        <>
+          <div className={'tbx-overlay' + (scrim ? ' scrim' : '')} onClick={() => setOpen(false)} />
+
+          {centered ? (
+            <div className="tbx-stage">
+              <div className={'tbx-wheel' + (shown ? ' shown' : '')} style={{ width: wheelSize, height: wheelSize }}>
+                {/* connector to hovered tile */}
+                <svg className="tbx-conn" width={wheelSize} height={wheelSize} viewBox={`0 0 ${wheelSize} ${wheelSize}`}>
+                  {active && shown && (() => {
+                    const p = placed.find(pl => pl.tool.id === active.id);
+                    if (!p) return null;
+                    return <line x1={wheelSize / 2} y1={wheelSize / 2} x2={wheelSize / 2 + p.x} y2={wheelSize / 2 + p.y}
+                      stroke="var(--accent)" strokeWidth="1.5" strokeDasharray="3 4" opacity="0.55" />;
+                  })()}
+                </svg>
+
+                {cats.map((c, i) => (
+                  <div key={i} className="tbx-cat" style={{ top: `calc(50% + ${c.y}px)` }}>{c.label}</div>
+                ))}
+
+                {/* hub */}
+                <div className="tbx-hub">
+                  {active ? (
+                    <>
+                      <div className="hub-kicker">{active.cat}</div>
+                      <div className="hub-name">{active.name}</div>
+                      <div className="hub-url">{active.url}</div>
+                      <div className="hub-go"><Icon name="externalLink" size={12} /> Open in new tab</div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="hub-kicker">Toolbox</div>
+                      <input
+                        ref={searchRef}
+                        className="hub-search"
+                        placeholder="Filter tools…"
+                        value={q}
+                        onChange={e => setQ(e.target.value)}
+                        onClick={e => e.stopPropagation()}
+                      />
+                      <div className="hub-count">{filtered.length} of {TOOLS.length} tools</div>
+                    </>
+                  )}
+                </div>
+
+                {/* tiles */}
+                {placed.map(p => (
+                  <ToolTile
+                    key={p.tool.id}
+                    tool={p.tool} x={p.x} y={p.y} idx={p.idx}
+                    shown={shown}
+                    dim={!matches(p.tool)}
+                    labels={wantLabels}
+                    onHover={setHover} onLeave={() => setHover(null)} onPick={pick}
+                    anchorCenter
+                  />
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div className={'tbx-fan tbx-wheel' + (shown ? ' shown' : '')}>
+              {placed.map(p => (
+                <ToolTile
+                  key={p.tool.id}
+                  tool={p.tool} x={p.x} y={p.y} idx={p.idx}
+                  shown={shown}
+                  dim={false}
+                  labels={wantLabels}
+                  onHover={setHover} onLeave={() => setHover(null)} onPick={pick}
+                  anchorCenter
+                />
+              ))}
+            </div>
+          )}
+        </>
+      )}
+
+      {/* launch toast */}
+      {toast && (
+        <div className="tbx-toast" key={toast.n}>
+          <span className="t-disc" style={{ background: toast.tool.color }}>{toast.tool.mono}</span>
+          <div className="t-main">
+            <div className="t-title"><Icon name="externalLink" size={13} /> Opening {toast.tool.name}</div>
+            <div className="t-url">{toast.tool.url}</div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
+window.Toolbox = Toolbox;
+window.TOOLBOX_TOOLS = TOOLS;

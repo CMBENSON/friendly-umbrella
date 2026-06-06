@@ -1,356 +1,77 @@
-/* O11Y Command — mock data layer. Plain global, no JSX. */
-(function () {
-  // ---- helpers to make time-relative data feel live ----
-  const now = new Date('2026-06-05T14:23:00');
-  const mins = (m) => new Date(now.getTime() - m * 60000);
-  const fmtAgo = (d) => {
-    const s = Math.round((now - d) / 1000);
-    if (s < 60) return s + 's ago';
-    const m = Math.round(s / 60);
-    if (m < 60) return m + 'm ago';
-    const h = Math.round(m / 60);
-    if (h < 24) return h + 'h ago';
-    return Math.round(h / 24) + 'd ago';
-  };
-  const fmtTime = (d) =>
-    d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+/* O11Y Command — icon set. Simple 24px stroke icons, offline. */
+const ICONS = {
+  dashboard: 'M3 3h7v9H3zM14 3h7v5h-7zM14 12h7v9h-7zM3 16h7v5H3z',
+  bell: 'M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9|M10.3 21a1.94 1.94 0 0 0 3.4 0',
+  flame: 'M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.07-2.14-.22-4.05 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.15.43-2.29 1-3a2.5 2.5 0 0 0 2.5 2.5z',
+  calendarClock: 'M21 7.5V6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2h6|M16 2v4M8 2v4M3 10h18|M17.5 17.5L16 16.3V14|M22 16a6 6 0 1 1-12 0 6 6 0 0 1 12 0z',
+  activity: 'M22 12h-4l-3 9L9 3l-3 9H2',
+  network: 'M9 2h6v6H9zM16 16h6v6h-6zM2 16h6v6H2|M5 16v-3a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v3M12 12V8',
+  calendar: 'M8 2v4M16 2v4M3 10h18|M5 4h14a2 2 0 0 1 2 2v13a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z',
+  sliders: 'M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6',
+  search: 'M11 11m-8 0a8 8 0 1 0 16 0a8 8 0 1 0-16 0|M21 21l-4.3-4.3',
+  command: 'M15 6a3 3 0 1 0 3 3H6a3 3 0 1 0 3-3v12a3 3 0 1 0-3-3h12a3 3 0 1 0-3 3z',
+  plus: 'M12 5v14M5 12h14',
+  chevronRight: 'M9 18l6-6-6-6',
+  chevronDown: 'M6 9l6 6 6-6',
+  chevronLeft: 'M15 18l-6-6 6-6',
+  externalLink: 'M15 3h6v6M10 14L21 3|M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6',
+  check: 'M20 6L9 17l-5-5',
+  x: 'M18 6L6 18M6 6l12 12',
+  clock: 'M12 12m-10 0a10 10 0 1 0 20 0a10 10 0 1 0-20 0|M12 6v6l4 2',
+  arrowUp: 'M12 19V5M5 12l7-7 7 7',
+  arrowDown: 'M12 5v14M5 12l7 7 7-7',
+  trendUp: 'M22 7l-8.5 8.5-5-5L2 17|M16 7h6v6',
+  trendDown: 'M22 17l-8.5-8.5-5 5L2 7|M16 17h6v-6',
+  more: 'M12 12m-1 0a1 1 0 1 0 2 0a1 1 0 1 0-2 0|M19 12m-1 0a1 1 0 1 0 2 0a1 1 0 1 0-2 0|M5 12m-1 0a1 1 0 1 0 2 0a1 1 0 1 0-2 0',
+  filter: 'M22 3H2l8 9.46V19l4 2v-8.54L22 3z',
+  refresh: 'M3 12a9 9 0 0 1 15-6.7L21 8|M21 3v5h-5|M21 12a9 9 0 0 1-15 6.7L3 16|M3 21v-5h5',
+  users: 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2|M9 11m-4 0a4 4 0 1 0 8 0a4 4 0 1 0-8 0|M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75',
+  user: 'M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2|M12 7m-4 0a4 4 0 1 0 8 0a4 4 0 1 0-8 0',
+  server: 'M3 4h18v6H3zM3 14h18v6H3|M7 7h.01M7 17h.01',
+  database: 'M12 5m-9 0a9 4 0 1 0 18 0a9 4 0 1 0-18 0|M3 5v14a9 4 0 0 0 18 0V5M3 12a9 4 0 0 0 18 0',
+  gitBranch: 'M6 3v12|M18 6m-3 0a3 3 0 1 0 6 0a3 3 0 1 0-6 0|M6 21m-3 0a3 3 0 1 0 6 0a3 3 0 1 0-6 0|M15 6a9 9 0 0 1-9 9',
+  zap: 'M13 2L3 14h9l-1 8 10-12h-9l1-8z',
+  shield: 'M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z',
+  message: 'M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z',
+  play: 'M6 3l14 9-14 9V3z',
+  pause: 'M6 4h4v16H6zM14 4h4v16h-4z',
+  dotCircle: 'M12 12m-10 0a10 10 0 1 0 20 0a10 10 0 1 0-20 0|M12 12m-3 0a3 3 0 1 0 6 0a3 3 0 1 0-6 0',
+  alertTriangle: 'M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z|M12 9v4M12 17h.01',
+  alertOctagon: 'M7.9 2h8.2L22 7.9v8.2L16.1 22H7.9L2 16.1V7.9L7.9 2z|M12 8v4M12 16h.01',
+  checkCircle: 'M22 11.1V12a10 10 0 1 1-5.9-9.1|M22 4L12 14.01l-3-3',
+  mapPin: 'M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0z|M12 10m-3 0a3 3 0 1 0 6 0a3 3 0 1 0-6 0',
+  link: 'M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7|M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7',
+  layers: 'M12 2 2 7l10 5 10-5-10-5z|M2 17l10 5 10-5M2 12l10 5 10-5',
+  sun: 'M12 12m-5 0a5 5 0 1 0 10 0a5 5 0 1 0-10 0|M12 1v2M12 21v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M1 12h2M21 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4',
+  moon: 'M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z',
+  eye: 'M2 12s4-8 10-8 10 8 10 8-4 8-10 8-10-8-10-8z|M12 12m-3 0a3 3 0 1 0 6 0a3 3 0 1 0-6 0',
+  pin: 'M12 17v5|M9 10.8V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v5.8l1.7 2.3a1 1 0 0 1-.8 1.6H8.1a1 1 0 0 1-.8-1.6L9 10.8z',
+  phone: 'M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3 19.5 19.5 0 0 1-6-6 19.8 19.8 0 0 1-3-8.6A2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.3 1.8.6 2.6a2 2 0 0 1-.5 2.1L8.1 9.9a16 16 0 0 0 6 6l1.5-1.1a2 2 0 0 1 2.1-.5c.8.3 1.7.5 2.6.6a2 2 0 0 1 1.7 2z',
+  list: 'M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01',
+  grid: 'M3 3h7v7H3zM14 3h7v7h-7zM14 14h7v7h-7zM3 14h7v7H3z',
+  sparkles: 'M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8L12 3z|M18.5 15l.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8.8-2.2',
+  send: 'M22 2L11 13|M22 2l-7 20-4-9-9-4 20-7z',
+  copy: 'M9 9h11a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-9a2 2 0 0 1-2-2v-9a2 2 0 0 1 2-2z|M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1',
+  undo: 'M9 14L4 9l5-5|M4 9h11a6 6 0 0 1 0 12h-3',
+  thumbsUp: 'M7 10v12|M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.76a2 2 0 0 0 1.79-1.11L12 2a3.13 3.13 0 0 1 3 3.88z',
+  lightbulb: 'M9 18h6|M10 22h4|M15.1 14c.2-.98.66-1.74 1.4-2.5A4.65 4.65 0 0 0 18 8 6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.75.76 1.2 1.52 1.4 2.5',
+  target: 'M12 12m-10 0a10 10 0 1 0 20 0a10 10 0 1 0-20 0|M12 12m-6 0a6 6 0 1 0 12 0a6 6 0 1 0-12 0|M12 12m-2 0a2 2 0 1 0 4 0a2 2 0 1 0-4 0',
+  board: 'M4 3h16a1 1 0 0 1 1 1v16a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z|M9 7v10M15 7v6',
+};
 
-  // ---- seeded series generator for charts ----
-  function series(n, base, vol, seed) {
-    let s = seed || 1;
-    const rnd = () => {
-      s = (s * 9301 + 49297) % 233280;
-      return s / 233280;
-    };
-    const out = [];
-    let v = base;
-    for (let i = 0; i < n; i++) {
-      v += (rnd() - 0.5) * vol;
-      v = Math.max(base * 0.4, Math.min(base * 1.7, v));
-      out.push(+v.toFixed(2));
-    }
-    return out;
-  }
+function Icon({ name, size, style, className }) {
+  const raw = ICONS[name];
+  if (!raw) return null;
+  const segs = raw.split('|');
+  return (
+    <svg
+      width={size || 18} height={size || 18} viewBox="0 0 24 24" fill="none"
+      stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+      className={className} style={style} aria-hidden="true"
+    >
+      {segs.map((d, i) => <path key={i} d={d} />)}
+    </svg>
+  );
+}
 
-  // ---- CMDB: services & topology ----
-  const services = [
-    { id: 'svc-checkout', name: 'Checkout API', tier: 'Tier 1', status: 'critical', owner: 'Payments', deps: ['svc-payments', 'svc-cart', 'svc-identity'], instances: 24, region: 'us-east-1' },
-    { id: 'svc-payments', name: 'Payments Gateway', tier: 'Tier 1', status: 'degraded', owner: 'Payments', deps: ['svc-ledger', 'svc-fraud'], instances: 18, region: 'us-east-1' },
-    { id: 'svc-cart', name: 'Cart Service', tier: 'Tier 1', status: 'healthy', owner: 'Storefront', deps: ['svc-catalog', 'svc-redis'], instances: 32, region: 'us-east-1' },
-    { id: 'svc-identity', name: 'Identity / SSO', tier: 'Tier 1', status: 'healthy', owner: 'Platform', deps: ['svc-postgres'], instances: 12, region: 'global' },
-    { id: 'svc-ledger', name: 'Ledger DB', tier: 'Tier 1', status: 'degraded', owner: 'Payments', deps: ['svc-postgres'], instances: 6, region: 'us-east-1' },
-    { id: 'svc-fraud', name: 'Fraud Engine', tier: 'Tier 2', status: 'healthy', owner: 'Risk', deps: ['svc-kafka'], instances: 8, region: 'us-east-1' },
-    { id: 'svc-catalog', name: 'Catalog API', tier: 'Tier 2', status: 'healthy', owner: 'Storefront', deps: ['svc-elastic'], instances: 16, region: 'us-east-1' },
-    { id: 'svc-redis', name: 'Redis Cluster', tier: 'Tier 1', status: 'healthy', owner: 'Platform', deps: [], instances: 9, region: 'us-east-1' },
-    { id: 'svc-postgres', name: 'Postgres Primary', tier: 'Tier 1', status: 'degraded', owner: 'Platform', deps: [], instances: 3, region: 'us-east-1' },
-    { id: 'svc-kafka', name: 'Kafka Broker', tier: 'Tier 1', status: 'healthy', owner: 'Platform', deps: [], instances: 5, region: 'us-east-1' },
-    { id: 'svc-elastic', name: 'Elasticsearch', tier: 'Tier 2', status: 'healthy', owner: 'Platform', deps: [], instances: 7, region: 'us-east-1' },
-    { id: 'svc-notify', name: 'Notifications', tier: 'Tier 3', status: 'healthy', owner: 'Growth', deps: ['svc-kafka'], instances: 6, region: 'us-east-1' },
-  ];
-
-  // ---- SLOs ----
-  const slos = [
-    { id: 'slo-checkout-avail', service: 'Checkout API', name: 'Availability', target: 99.95, current: 99.61, budget: 18, trend: series(48, 99.8, 0.4, 11), unit: '%', sli: 'Success rate' },
-    { id: 'slo-checkout-lat', service: 'Checkout API', name: 'Latency p99', target: 300, current: 446, budget: -12, trend: series(48, 280, 60, 7), unit: 'ms', sli: 'Request latency', invert: true },
-    { id: 'slo-payments-avail', service: 'Payments Gateway', name: 'Availability', target: 99.9, current: 99.82, budget: 41, trend: series(48, 99.85, 0.2, 3), unit: '%', sli: 'Success rate' },
-    { id: 'slo-cart-avail', service: 'Cart Service', name: 'Availability', target: 99.9, current: 99.98, budget: 92, trend: series(48, 99.95, 0.1, 5), unit: '%', sli: 'Success rate' },
-    { id: 'slo-identity-lat', service: 'Identity / SSO', name: 'Latency p95', target: 150, current: 118, budget: 64, trend: series(48, 120, 25, 9), unit: 'ms', sli: 'Auth latency', invert: true },
-    { id: 'slo-catalog-avail', service: 'Catalog API', name: 'Availability', target: 99.5, current: 99.93, budget: 88, trend: series(48, 99.9, 0.15, 13), unit: '%', sli: 'Success rate' },
-  ];
-
-  // ---- Incidents ----
-  const incidents = [
-    {
-      id: 'INC-4821',
-      title: 'Checkout 5xx spike — payment authorization failures',
-      severity: 'SEV1',
-      status: 'Investigating',
-      services: ['Checkout API', 'Payments Gateway', 'Ledger DB'],
-      startedAt: mins(37),
-      commander: 'Priya Nair',
-      responders: ['Priya Nair', 'Marcus Webb', 'Dana Liu'],
-      impact: 'Customers unable to complete checkout in us-east-1. ~3.1% of sessions affected.',
-      jira: 'OPS-2391',
-      snow: 'INC0094821',
-      slack: '#inc-4821-checkout',
-      timeline: [
-        { t: mins(37), who: 'Grafana', kind: 'alert', text: 'Alert fired: Checkout API error rate > 5% (threshold 1%)' },
-        { t: mins(35), who: 'PagerDuty', kind: 'system', text: 'Paged on-call: Priya Nair (Payments primary)' },
-        { t: mins(33), who: 'Priya Nair', kind: 'note', text: 'Ack. Confirming blast radius — looks isolated to us-east-1.' },
-        { t: mins(28), who: 'Marcus Webb', kind: 'note', text: 'Payments Gateway latency climbing, Ledger DB connection pool saturated.' },
-        { t: mins(19), who: 'Dana Liu', kind: 'action', text: 'Scaling Ledger DB read replicas 3 → 6. Rolling out now.' },
-        { t: mins(8), who: 'Grafana', kind: 'system', text: 'Error rate trending down: 5.2% → 2.1%' },
-      ],
-    },
-    {
-      id: 'INC-4818',
-      title: 'Elevated latency on Identity / SSO login flow',
-      severity: 'SEV3',
-      status: 'Monitoring',
-      services: ['Identity / SSO'],
-      startedAt: mins(184),
-      commander: 'Tom Okafor',
-      responders: ['Tom Okafor'],
-      impact: 'p95 login latency briefly exceeded 250ms. Mitigated via cache warmup.',
-      jira: 'OPS-2388', snow: 'INC0094818', slack: '#inc-4818-sso',
-      timeline: [],
-    },
-  ];
-
-  // ---- Alerts (RSS feed) ----
-  const alertSources = ['Grafana', 'Prometheus', 'ServiceNow', 'Datadog', 'CloudWatch'];
-  const alerts = [
-    { id: 'al-1', sev: 'critical', title: 'Checkout API error rate 5.2% (> 1%)', source: 'Grafana', service: 'Checkout API', t: mins(37), status: 'firing', inc: 'INC-4821' },
-    { id: 'al-2', sev: 'critical', title: 'Ledger DB connection pool exhausted', source: 'Prometheus', service: 'Ledger DB', t: mins(34), status: 'firing', inc: 'INC-4821' },
-    { id: 'al-3', sev: 'warning', title: 'Payments Gateway p99 latency 820ms', source: 'Grafana', service: 'Payments Gateway', t: mins(31), status: 'acked', inc: 'INC-4821' },
-    { id: 'al-4', sev: 'warning', title: 'Postgres Primary replication lag 4.2s', source: 'Datadog', service: 'Postgres Primary', t: mins(52), status: 'firing', inc: null },
-    { id: 'al-5', sev: 'critical', title: 'CHG0048213 change window started — Payments deploy', source: 'ServiceNow', service: 'Payments Gateway', t: mins(58), status: 'acked', inc: null },
-    { id: 'al-6', sev: 'warning', title: 'Kafka consumer lag on fraud-events > 10k', source: 'Prometheus', service: 'Kafka Broker', t: mins(74), status: 'firing', inc: null },
-    { id: 'al-7', sev: 'info', title: 'Redis Cluster failover completed cleanly', source: 'CloudWatch', service: 'Redis Cluster', t: mins(96), status: 'resolved', inc: null },
-    { id: 'al-8', sev: 'warning', title: 'Catalog API CPU 84% on 3 nodes', source: 'Grafana', service: 'Catalog API', t: mins(112), status: 'acked', inc: null },
-    { id: 'al-9', sev: 'info', title: 'Elasticsearch shard rebalance finished', source: 'Datadog', service: 'Elasticsearch', t: mins(140), status: 'resolved', inc: null },
-    { id: 'al-10', sev: 'critical', title: 'Identity / SSO p95 latency 268ms (> 150ms)', source: 'Grafana', service: 'Identity / SSO', t: mins(184), status: 'resolved', inc: 'INC-4818' },
-    { id: 'al-11', sev: 'warning', title: 'Notifications queue depth 8.4k growing', source: 'Prometheus', service: 'Notifications', t: mins(210), status: 'firing', inc: null },
-    { id: 'al-12', sev: 'info', title: 'Nightly backup verified — Postgres Primary', source: 'CloudWatch', service: 'Postgres Primary', t: mins(360), status: 'resolved', inc: null },
-  ];
-
-  // ---- On-call ----
-  const people = {
-    'Priya Nair': { initials: 'PN', team: 'Payments', color: '#6366f1' },
-    'Marcus Webb': { initials: 'MW', team: 'Payments', color: '#0ea5e9' },
-    'Dana Liu': { initials: 'DL', team: 'Platform', color: '#10b981' },
-    'Tom Okafor': { initials: 'TO', team: 'Platform', color: '#f59e0b' },
-    'Sofia Reyes': { initials: 'SR', team: 'Storefront', color: '#ec4899' },
-    'Ken Adachi': { initials: 'KA', team: 'Storefront', color: '#8b5cf6' },
-    'Lena Frost': { initials: 'LF', team: 'Risk', color: '#14b8a6' },
-    'Omar Haddad': { initials: 'OH', team: 'Risk', color: '#ef4444' },
-  };
-  const onCallNow = [
-    { team: 'Payments', primary: 'Priya Nair', secondary: 'Marcus Webb', until: 'Fri 09:00' },
-    { team: 'Platform', primary: 'Dana Liu', secondary: 'Tom Okafor', until: 'Fri 09:00' },
-    { team: 'Storefront', primary: 'Sofia Reyes', secondary: 'Ken Adachi', until: 'Mon 09:00' },
-    { team: 'Risk', primary: 'Lena Frost', secondary: 'Omar Haddad', until: 'Mon 09:00' },
-  ];
-  // rotation rows for the schedule timeline (7 days, who covers each)
-  const rotationDays = ['Mon 1', 'Tue 2', 'Wed 3', 'Thu 4', 'Fri 5', 'Sat 6', 'Sun 7'];
-  const rotation = [
-    { team: 'Payments', shifts: ['Priya Nair', 'Priya Nair', 'Priya Nair', 'Priya Nair', 'Marcus Webb', 'Marcus Webb', 'Marcus Webb'] },
-    { team: 'Platform', shifts: ['Tom Okafor', 'Tom Okafor', 'Dana Liu', 'Dana Liu', 'Dana Liu', 'Tom Okafor', 'Tom Okafor'] },
-    { team: 'Storefront', shifts: ['Ken Adachi', 'Ken Adachi', 'Ken Adachi', 'Sofia Reyes', 'Sofia Reyes', 'Sofia Reyes', 'Sofia Reyes'] },
-    { team: 'Risk', shifts: ['Lena Frost', 'Omar Haddad', 'Lena Frost', 'Omar Haddad', 'Lena Frost', 'Lena Frost', 'Omar Haddad'] },
-  ];
-  const escalation = [
-    { level: 'L1', when: 'Immediately', who: 'Primary on-call', via: 'Push + SMS' },
-    { level: 'L2', when: 'After 5 min unack', who: 'Secondary on-call', via: 'Push + Call' },
-    { level: 'L3', when: 'After 15 min', who: 'Team lead', via: 'Call' },
-    { level: 'L4', when: 'After 30 min', who: 'Incident manager', via: 'Call + Email' },
-  ];
-
-  // ---- Changes (ServiceNow CHG + Jira) ----
-  const changes = [
-    { id: 'CHG0048213', src: 'ServiceNow', title: 'Payments Gateway v4.2 rolling deploy', type: 'Normal', risk: 'High', status: 'In Progress', when: 'Today 13:30–15:30', owner: 'Marcus Webb', day: 5 },
-    { id: 'CHG0048220', src: 'ServiceNow', title: 'Postgres minor version patch (15.4→15.5)', type: 'Standard', risk: 'Medium', status: 'Scheduled', when: 'Today 22:00', owner: 'Dana Liu', day: 5 },
-    { id: 'OPS-2402', src: 'Jira', title: 'Catalog API autoscaling policy update', type: 'Normal', risk: 'Low', status: 'Scheduled', when: 'Fri 11:00', owner: 'Ken Adachi', day: 5 },
-    { id: 'CHG0048231', src: 'ServiceNow', title: 'Kafka broker rolling restart', type: 'Standard', risk: 'Medium', status: 'Scheduled', when: 'Sat 02:00', owner: 'Tom Okafor', day: 6 },
-    { id: 'OPS-2410', src: 'Jira', title: 'Redis cluster scale-out (+3 nodes)', type: 'Normal', risk: 'Low', status: 'Scheduled', when: 'Mon 10:00', owner: 'Dana Liu', day: 1 },
-    { id: 'CHG0048240', src: 'ServiceNow', title: 'Fraud Engine model rollout', type: 'Normal', risk: 'Medium', status: 'Pending Approval', when: 'Tue 14:00', owner: 'Lena Frost', day: 2 },
-    { id: 'CHG0048199', src: 'ServiceNow', title: 'Identity / SSO cert rotation', type: 'Emergency', risk: 'High', status: 'Completed', when: 'Wed 03:00', owner: 'Tom Okafor', day: 3 },
-    { id: 'OPS-2395', src: 'Jira', title: 'Checkout feature flag cleanup', type: 'Standard', risk: 'Low', status: 'Completed', when: 'Thu 09:30', owner: 'Sofia Reyes', day: 4 },
-  ];
-
-  // ---- Jira project work (ServiceNow ticket queues too) ----
-  const queues = [
-    { label: 'Incidents (INC)', src: 'ServiceNow', open: 7, trend: '+2', tone: 'critical' },
-    { label: 'Changes (CHG)', src: 'ServiceNow', open: 12, trend: '+1', tone: 'warning' },
-    { label: 'Requests (RITM)', src: 'ServiceNow', open: 34, trend: '−5', tone: 'info' },
-    { label: 'Problems (PRB)', src: 'ServiceNow', open: 4, trend: '0', tone: 'info' },
-    { label: 'Sprint stories', src: 'Jira', open: 28, trend: '+3', tone: 'accent' },
-    { label: 'Bugs', src: 'Jira', open: 9, trend: '−2', tone: 'warning' },
-  ];
-  const sprint = {
-    name: 'SRE Sprint 41', ends: '4 days left', done: 19, inProgress: 6, todo: 11,
-    items: [
-      { key: 'OPS-2391', title: 'Auto-scale Ledger DB replicas on pool saturation', status: 'In Progress', who: 'Dana Liu', pts: 5 },
-      { key: 'OPS-2388', title: 'SSO cache warmup on deploy', status: 'In Review', who: 'Tom Okafor', pts: 3 },
-      { key: 'OPS-2402', title: 'Catalog autoscaling policy', status: 'In Progress', who: 'Ken Adachi', pts: 2 },
-      { key: 'OPS-2377', title: 'Alert routing: dedupe Grafana + Datadog', status: 'To Do', who: 'Priya Nair', pts: 8 },
-    ],
-  };
-
-  // ---- Grafana panels (metrics view) ----
-  const panels = [
-    { id: 'p1', title: 'Request rate', service: 'Checkout API', unit: 'req/s', data: series(60, 1200, 180, 21), color: 'accent', value: '1.18k' },
-    { id: 'p2', title: 'Error rate', service: 'Checkout API', unit: '%', data: series(60, 2.4, 1.6, 4), color: 'critical', value: '5.2%' },
-    { id: 'p3', title: 'p99 latency', service: 'Checkout API', unit: 'ms', data: series(60, 320, 70, 8), color: 'warning', value: '446ms' },
-    { id: 'p4', title: 'Saturation (CPU)', service: 'Payments Gateway', unit: '%', data: series(60, 62, 14, 15), color: 'accent', value: '71%' },
-    { id: 'p5', title: 'DB connections', service: 'Ledger DB', unit: 'conns', data: series(60, 180, 40, 33), color: 'warning', value: '236' },
-    { id: 'p6', title: 'Apdex score', service: 'Checkout API', unit: '', data: series(60, 0.94, 0.06, 2).map(v => Math.min(1, v)), color: 'ok', value: '0.88' },
-  ];
-
-  // ---- Jira sprint board (project work) ----
-  const jiraBoard = {
-    sprint: { name: 'SRE Sprint 41', goal: 'Harden checkout DB resilience & cut alert noise', range: 'Jun 2 – Jun 13', left: '4 days left', committed: 45, completed: 17, burndown: series(11, 45, 6, 17).map((v, i) => Math.max(0, Math.round(45 - i * 3.2))) },
-    columns: [
-      { id: 'todo', name: 'To Do', cards: [
-        { key: 'OPS-2377', type: 'Story', title: 'Alert routing: dedupe Grafana + Datadog signals', pts: 8, who: 'Priya Nair', priority: 'High', labels: ['alerting'] },
-        { key: 'OPS-2415', type: 'Task', title: 'Add SLO burn-rate alerts for Catalog API', pts: 3, who: 'Ken Adachi', priority: 'Medium', labels: ['slo'] },
-        { key: 'OPS-2418', type: 'Bug', title: 'Cart service flaky integration test in CI', pts: 2, who: 'Sofia Reyes', priority: 'Low', labels: ['ci'] },
-      ]},
-      { id: 'inprogress', name: 'In Progress', cards: [
-        { key: 'OPS-2391', type: 'Story', title: 'Auto-scale Ledger DB replicas on pool saturation', pts: 5, who: 'Dana Liu', priority: 'High', labels: ['reliability'], inc: 'INC-4821' },
-        { key: 'OPS-2412', type: 'Bug', title: 'Cap startup connection count in Payments v4.2', pts: 3, who: 'Marcus Webb', priority: 'High', labels: ['payments'], inc: 'INC-4821' },
-        { key: 'OPS-2402', type: 'Task', title: 'Catalog API autoscaling policy update', pts: 2, who: 'Ken Adachi', priority: 'Medium', labels: ['infra'] },
-      ]},
-      { id: 'inreview', name: 'In Review', cards: [
-        { key: 'OPS-2388', type: 'Story', title: 'SSO auth-cache warmup on deploy', pts: 3, who: 'Tom Okafor', priority: 'Medium', labels: ['identity'], inc: 'INC-4818' },
-        { key: 'OPS-2409', type: 'Task', title: 'Fraud engine canary dashboards', pts: 2, who: 'Lena Frost', priority: 'Low', labels: ['observability'] },
-      ]},
-      { id: 'done', name: 'Done', cards: [
-        { key: 'OPS-2399', type: 'Story', title: 'Payments idempotency keys for retries', pts: 8, who: 'Marcus Webb', priority: 'High', labels: ['payments'] },
-        { key: 'OPS-2395', type: 'Story', title: 'Checkout feature-flag cleanup', pts: 5, who: 'Sofia Reyes', priority: 'Medium', labels: ['checkout'] },
-        { key: 'OPS-2380', type: 'Task', title: 'Postgres backup verification automation', pts: 3, who: 'Dana Liu', priority: 'Medium', labels: ['platform'] },
-        { key: 'OPS-2375', type: 'Bug', title: 'Fix flapping SSO health check', pts: 1, who: 'Tom Okafor', priority: 'Low', labels: ['identity'] },
-      ]},
-    ],
-    epics: [
-      { name: 'Checkout resilience', done: 6, total: 11, color: '#6366f1' },
-      { name: 'Alert noise reduction', done: 2, total: 7, color: '#0d9488' },
-      { name: 'Identity hardening', done: 4, total: 5, color: '#e6562a' },
-    ],
-  };
-
-  const kpis = {
-    activeIncidents: 1,
-    firingAlerts: alerts.filter(a => a.status === 'firing').length,
-    servicesDegraded: services.filter(s => s.status !== 'healthy').length,
-    sloAtRisk: slos.filter(s => s.budget < 25).length,
-    mttrToday: '24m',
-    deploysToday: 6,
-  };
-
-  // ---- AI copilot & insights ----
-  const insights = [
-    { id: 'ins-1', type: 'correlation', title: 'Checkout failures track the Payments v4.2 deploy', confidence: 92, sev: 'critical',
-      body: 'Error rate began climbing 16 min after change CHG0048213 entered its window. Ledger DB pool saturation followed 4 min later.',
-      evidence: ['CHG0048213 started 13:30', '5xx onset at 13:46', 'Ledger pool 100% by 13:50'],
-      action: { label: 'Roll back CHG0048213', icon: 'undo' }, link: { screen: 'incident', params: { id: 'INC-4821' } } },
-    { id: 'ins-2', type: 'prediction', title: 'Checkout error budget exhausts in ~3h 50m', confidence: 86, sev: 'warning',
-      body: 'At the current burn rate (14× normal), the 99.95% availability SLO breaches before 18:15 today.',
-      evidence: ['Burn rate 14× baseline', '18% budget remaining'],
-      action: { label: 'View SLO', icon: 'activity' }, link: { screen: 'metrics' } },
-    { id: 'ins-3', type: 'recommendation', title: 'Scale Ledger DB replicas 6 → 8', confidence: 81, sev: 'info',
-      body: 'Two prior incidents with an identical pool-saturation signature resolved within 9 min after a replica scale-out.',
-      evidence: ['Matches INC-4102 & INC-3987', 'Avg resolve 9m'],
-      action: { label: 'Apply scale-out', icon: 'zap' }, link: { screen: 'metrics', params: { service: 'Ledger DB' } } },
-    { id: 'ins-4', type: 'anomaly', title: 'Kafka fraud-events lag is 3.4σ above baseline', confidence: 74, sev: 'warning',
-      body: 'Consumer lag has grown steadily for 74 min, independent of the checkout incident — worth a separate look.',
-      evidence: ['Lag 10.2k vs ~1.8k baseline', 'Rising for 74m'],
-      action: { label: 'Inspect Kafka', icon: 'activity' }, link: { screen: 'metrics' } },
-  ];
-
-  const copilotSuggestions = [
-    'Summarize the active incident',
-    'What changed before checkout broke?',
-    'Draft a customer status update',
-    'Who should I page next?',
-    'Is any error budget at risk?',
-  ];
-
-  const incidentCopilot = {
-    'INC-4821': {
-      hypothesis: 'Ledger DB connection-pool exhaustion triggered by the Payments v4.2 deploy.',
-      confidence: 92,
-      summary: 'A Payments v4.2 deploy (CHG0048213) at 13:30 is the most likely trigger. Within 16 min, Checkout 5xx crossed 5% as the Ledger DB connection pool saturated. Blast radius is us-east-1 checkout — ~3.1% of sessions. Read replicas were scaled 3→6 at 14:04 and error rate is now trending down (5.2% → 2.1%).',
-      actions: [
-        { label: 'Roll back CHG0048213', tone: 'crit', icon: 'undo' },
-        { label: 'Scale Ledger replicas 6 → 8', tone: 'accent', icon: 'zap' },
-        { label: 'Draft status-page update', tone: 'neutral', icon: 'message' },
-      ],
-      similar: [
-        { id: 'INC-4102', title: 'Ledger pool saturation after deploy', resolved: '9m', when: '3 weeks ago' },
-        { id: 'INC-3987', title: 'Checkout 5xx — DB connections', resolved: '12m', when: '2 months ago' },
-      ],
-      draft: 'We are aware of an issue affecting checkout for some customers in the US region. Our engineering team has identified a likely cause and is actively working on a fix. Next update in 30 minutes.',
-    },
-    'INC-4818': {
-      hypothesis: 'Cold auth cache after the SSO cert rotation drove transient p95 latency.',
-      confidence: 71,
-      summary: 'Identity / SSO p95 login latency briefly exceeded 250ms following the cert rotation (CHG0048199). A cache warmup mitigated it and the service has held under target for 2h. Low ongoing risk.',
-      actions: [
-        { label: 'Mark resolved', tone: 'accent', icon: 'check' },
-        { label: 'Add cache warmup to runbook', tone: 'neutral', icon: 'message' },
-      ],
-      similar: [{ id: 'INC-3801', title: 'SSO latency after cert rotation', resolved: '18m', when: '4 months ago' }],
-      draft: 'Login latency has returned to normal. We will continue monitoring and close this incident shortly.',
-    },
-  };
-
-  // RCA / postmortem drafts (auto-generated by Copilot on resolve)
-  const rca = {
-    'INC-4821': {
-      detectedBy: 'Grafana alert — Checkout API error rate > 1%',
-      severity: 'SEV1',
-      impact: '~3.1% of checkout sessions in us-east-1 failed over the incident window. No data loss; no successful charges were double-processed.',
-      executiveSummary: 'A Payments Gateway v4.2 deploy (CHG0048213) opened more database connections on startup than the Ledger DB pool was provisioned for. The pool saturated within ~20 minutes, causing checkout authorization calls to fail with 5xx errors. Scaling Ledger read replicas from 3 to 6 relieved pressure and restored service. Total customer-impacting time was contained to the checkout path in a single region.',
-      rootCause: 'Ledger DB connection-pool exhaustion. Payments v4.2 establishes a larger connection pool per instance on boot; the rolling deploy multiplied this across 18 instances faster than the Ledger DB could absorb, exhausting available connections and stalling checkout authorization.',
-      contributingFactors: [
-        'Ledger DB connection pool was sized for steady-state load, not deploy-time connection churn.',
-        'Payments v4.2 increased per-instance connection count without a corresponding Ledger DB review.',
-        'No automated circuit breaker on pool saturation — mitigation was manual.',
-      ],
-      resolution: [
-        'Scaled Ledger DB read replicas 3 → 6 at 14:04 to expand available connections.',
-        'Connection pressure relieved; checkout error rate fell 5.2% → 2.1% within 8 minutes.',
-        'CHG0048213 flagged for a connection-budget fix before any re-deploy.',
-      ],
-      actionItems: [
-        { task: 'Add pool-saturation autoscaling to Ledger DB', owner: 'Dana Liu', due: 'Jun 9', jira: 'OPS-2391', priority: 'High' },
-        { task: 'Cap startup connection count in Payments v4.2', owner: 'Marcus Webb', due: 'Jun 7', jira: 'OPS-2412', priority: 'High' },
-        { task: 'Add deploy-aware alert suppression + connection budget check to CAB', owner: 'Priya Nair', due: 'Jun 12', jira: 'OPS-2377', priority: 'Medium' },
-      ],
-      lessons: [
-        'Deploys touching Tier-1 datastores need a connection-budget review in the change ticket.',
-        'Read-replica scale-out is a fast, low-risk mitigation for connection-pool saturation.',
-      ],
-    },
-    'INC-4818': {
-      detectedBy: 'Grafana alert — Identity / SSO p95 latency > 150ms',
-      severity: 'SEV3',
-      impact: 'Login p95 latency briefly exceeded 250ms. No failed logins; users experienced slightly slower sign-in for ~12 minutes.',
-      executiveSummary: 'A scheduled SSO certificate rotation (CHG0048199) invalidated the auth cache, forcing cold lookups and a short latency spike. A cache warmup restored normal latency and the service has held under target since.',
-      rootCause: 'Cold auth cache following the certificate rotation, leading to transient lookup latency.',
-      contributingFactors: ['Cert rotation did not pre-warm the auth cache.', 'No staged warmup step in the rotation runbook.'],
-      resolution: ['Triggered manual cache warmup.', 'p95 latency returned under 150ms within minutes.'],
-      actionItems: [
-        { task: 'Add cache warmup step to cert-rotation runbook', owner: 'Tom Okafor', due: 'Jun 10', jira: 'OPS-2388', priority: 'Medium' },
-      ],
-      lessons: ['Cache-invalidating maintenance should include a warmup step before traffic resumes.'],
-    },
-  };
-
-  // grounding context for the live copilot
-  const buildContext = () => {
-    const firing = alerts.filter(a => a.status === 'firing');
-    return [
-      'You are O11Y Copilot, the AI assistant inside an SRE command center. Be concise, concrete and action-oriented. Use short paragraphs or tight bullet lists. Never invent data beyond what is given.',
-      '',
-      'CURRENT STATE (production, us-east-1, time 14:23):',
-      'Active incidents: ' + incidents.map(i => `${i.id} ${i.severity} "${i.title}" status=${i.status}, services=[${i.services.join(', ')}], IC=${i.commander}`).join(' | '),
-      'Firing alerts (' + firing.length + '): ' + firing.map(a => `${a.title} [${a.source}/${a.service}]`).join('; '),
-      'Degraded services: ' + services.filter(s => s.status !== 'healthy').map(s => `${s.name} (${s.status})`).join(', '),
-      'SLOs at risk: ' + slos.filter(s => s.budget < 25).map(s => `${s.service} ${s.name} budget=${s.budget}%`).join(', '),
-      'Recent/active changes: ' + changes.filter(c => ['In Progress', 'Scheduled'].includes(c.status)).map(c => `${c.id} "${c.title}" ${c.status} risk=${c.risk}`).join('; '),
-      'On-call now: ' + onCallNow.map(o => `${o.team}=${o.primary}(2nd ${o.secondary})`).join(', '),
-      'Key correlation: CHG0048213 (Payments v4.2 deploy) began 13:30; checkout 5xx onset 13:46; Ledger DB pool saturated.',
-    ].join('\n');
-  };
-
-  const ai = { insights, copilotSuggestions, incidentCopilot, buildContext, rca };
-
-  window.DB = {
-    now, fmtAgo, fmtTime, series,
-    services, slos, incidents, alerts, alertSources,
-    people, onCallNow, rotationDays, rotation, escalation,
-    changes, queues, sprint, panels, kpis, ai, jiraBoard,
-  };
-})();
+window.Icon = Icon;
