@@ -465,6 +465,69 @@ body {
 .epic-bar { height: 7px; border-radius: 99px; background: var(--surface-2); overflow: hidden; }
 .epic-bar > span { display: block; height: 100%; border-radius: 99px; }
 
+/* ============ Metrics & SLOs — redesign ============ */
+/* summary band */
+.mx-summary { display: grid; grid-template-columns: 1.05fr 1.2fr 0.85fr 1.5fr; align-items: stretch; padding: 0; overflow: hidden; }
+.mx-cell { padding: 18px 22px; border-left: 1px solid var(--border); display: flex; flex-direction: column; justify-content: center; gap: 9px; min-width: 0; }
+.mx-cell:first-child { border-left: none; }
+.mx-cell .k { font-family: var(--mono); font-size: 10px; letter-spacing: .07em; text-transform: uppercase; color: var(--ink-faint); font-weight: 600; }
+.mx-ringrow { display: flex; align-items: center; gap: 14px; }
+.mx-ringrow .big { font-size: 30px; font-weight: 800; letter-spacing: -0.02em; line-height: 1; font-variant-numeric: tabular-nums; }
+.mx-ringrow .sub { font-size: 12px; color: var(--ink-3); margin-top: 4px; line-height: 1.3; }
+.mx-counts { display: flex; gap: 18px; }
+.mx-counts .n { font-size: 23px; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; }
+.mx-counts .l { font-size: 11px; color: var(--ink-3); margin-top: 4px; display: flex; align-items: center; gap: 5px; }
+.mx-statbar { display: flex; height: 7px; border-radius: 99px; overflow: hidden; background: var(--surface-2); }
+.mx-statbar > span { display: block; height: 100%; }
+.mx-worst { display: flex; align-items: center; gap: 14px; }
+.mx-worst .wmeta { min-width: 0; flex: 1; }
+.mx-worst .wsvc { font-size: 14px; font-weight: 700; letter-spacing: -0.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mx-worst .wobj { font-size: 11.5px; color: var(--ink-3); }
+
+/* controls */
+.mx-controls { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; }
+.mx-chip { font-family: var(--font); font-size: 12px; font-weight: 600; padding: 6px 11px; border-radius: 99px; border: 1px solid var(--border); background: var(--surface); color: var(--ink-3); cursor: pointer; display: inline-flex; align-items: center; gap: 6px; transition: background .12s, color .12s, border-color .12s; }
+.mx-chip:hover { background: var(--surface-2); }
+.mx-chip.on { background: var(--ink); color: var(--bg); border-color: transparent; }
+.mx-chip .cdot { width: 7px; height: 7px; border-radius: 99px; }
+.mx-chip .cn { font-variant-numeric: tabular-nums; opacity: .7; }
+.mx-select { position: relative; display: inline-flex; align-items: center; }
+.mx-select select { appearance: none; font-family: var(--font); font-size: 12.5px; font-weight: 600; color: var(--ink-2); padding: 7px 28px 7px 12px; border-radius: 10px; border: 1px solid var(--border); background: var(--surface); cursor: pointer; }
+.mx-select svg { position: absolute; right: 9px; pointer-events: none; color: var(--ink-faint); }
+
+/* SLO card */
+.mx-slo { position: relative; padding: var(--pad); border-radius: var(--r-lg); border: 1px solid var(--border); background: var(--surface); box-shadow: var(--shadow-sm); overflow: hidden; transition: box-shadow .14s, transform .14s, border-color .14s; cursor: pointer; }
+.mx-slo:hover { box-shadow: var(--shadow-md); transform: translateY(-2px); }
+.mx-slo::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--ok); }
+.mx-slo.crit::before { background: var(--crit); }
+.mx-slo.warn::before { background: var(--warn); }
+.mx-slo.ok::before { background: var(--ok); }
+.mx-slo.crit { background: color-mix(in oklab, var(--crit) 5%, var(--surface)); border-color: color-mix(in oklab, var(--crit) 26%, var(--border)); }
+.mx-slo.warn { background: color-mix(in oklab, var(--warn) 5%, var(--surface)); border-color: color-mix(in oklab, var(--warn) 22%, var(--border)); }
+.mx-burn { display: inline-flex; align-items: center; gap: 3px; font-family: var(--mono); font-size: 11px; font-weight: 700; padding: 2px 7px 2px 5px; border-radius: 7px; white-space: nowrap; }
+.mx-burn svg { width: 11px; height: 11px; }
+.mx-burn.crit { background: color-mix(in oklab, var(--crit) 15%, var(--surface)); color: var(--crit); }
+.mx-burn.warn { background: color-mix(in oklab, var(--warn) 18%, var(--surface)); color: color-mix(in oklab, var(--warn) 72%, var(--ink)); }
+.mx-burn.ok { background: var(--surface-2); color: var(--ink-3); }
+.mx-bbar { position: relative; height: 7px; border-radius: 99px; background: var(--surface-2); overflow: visible; }
+.mx-bbar .fill { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 99px; transition: width .5s cubic-bezier(.2,.8,.2,1); }
+.mx-bbar .tick { position: absolute; top: -3px; bottom: -3px; width: 2px; border-radius: 2px; background: var(--ink-faint); opacity: .45; }
+.mx-foot { display: flex; justify-content: space-between; align-items: flex-end; }
+.mx-foot .s .k { font-family: var(--mono); font-size: 9.5px; letter-spacing: .04em; text-transform: uppercase; color: var(--ink-faint); }
+.mx-foot .s .v { font-family: var(--mono); font-size: 13px; font-weight: 700; margin-top: 2px; }
+
+/* panel card (grafana) */
+.mx-panel { position: relative; padding: var(--pad); border-radius: var(--r-lg); border: 1px solid var(--border); background: var(--surface); box-shadow: var(--shadow-sm); transition: box-shadow .14s, transform .14s; }
+.mx-panel:hover { box-shadow: var(--shadow-md); transform: translateY(-2px); }
+.mx-delta { display: inline-flex; align-items: center; gap: 2px; font-family: var(--mono); font-size: 11px; font-weight: 700; }
+.mx-delta svg { width: 11px; height: 11px; }
+
+@media (max-width: 1100px) {
+  .mx-summary { grid-template-columns: 1fr 1fr; }
+  .mx-cell:nth-child(3), .mx-cell:nth-child(4) { border-top: 1px solid var(--border); }
+  .mx-cell:nth-child(3) { border-left: none; }
+}
+
 /* ============ Toolbox — radial tool launcher ============ */
 /* Floating action button */
 .tbx-fab {

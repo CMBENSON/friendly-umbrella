@@ -45,9 +45,10 @@ function colorVar(c) {
   return map[c] || c || 'var(--accent)';
 }
 
-function buildPath(data, w, h, pad) {
+function buildPath(data, w, h, pad, domain) {
   const p = pad || 0;
-  const min = Math.min(...data), max = Math.max(...data);
+  const min = domain ? domain[0] : Math.min(...data);
+  const max = domain ? domain[1] : Math.max(...data);
   const span = max - min || 1;
   const iw = w - p * 2, ih = h - p * 2;
   const pts = data.map((v, i) => {
@@ -87,11 +88,23 @@ function Sparkline({ data, color = 'accent', w = 120, h = 34, fill = true, strok
 function AreaChart({ data, color = 'accent', h = 150, threshold, thLabel, unit }) {
   const id = React.useMemo(() => 'ac' + Math.random().toString(36).slice(2, 8), []);
   const w = 600;
-  const { d, min, max } = buildPath(data, w, h, 8);
+  // when a threshold is given, expand the domain to include it (with breathing room)
+  // so the reference line always sits inside the chart instead of clipping off-canvas.
+  let domain = null, dmin, dmax, dspan;
+  if (threshold != null) {
+    dmin = Math.min(Math.min(...data), threshold);
+    dmax = Math.max(Math.max(...data), threshold);
+    const padv = (dmax - dmin) * 0.16 || 1;
+    dmin -= padv; dmax += padv;
+    domain = [dmin, dmax];
+    dspan = dmax - dmin || 1;
+  }
+  const { d, min, max } = buildPath(data, w, h, 8, domain);
   const c = colorVar(color);
   const area = d + ' L' + (w - 8) + ' ' + (h - 8) + ' L8 ' + (h - 8) + ' Z';
-  const span = max - min || 1;
-  const thY = threshold != null ? (8 + (h - 16) - ((threshold - min) / span) * (h - 16)) : null;
+  const span = domain ? dspan : (max - min || 1);
+  const base = domain ? dmin : min;
+  const thY = threshold != null ? (8 + (h - 16) - ((threshold - base) / span) * (h - 16)) : null;
   const grid = [0.25, 0.5, 0.75].map(f => 8 + (h - 16) * f);
   return (
     <svg viewBox={'0 0 ' + w + ' ' + h} preserveAspectRatio="none" style={{ width: '100%', height: h, display: 'block' }}>
